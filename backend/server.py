@@ -66,6 +66,8 @@ app.include_router(auth.router)
 app.include_router(themes.router)
 app.include_router(questions.router)
 app.include_router(exams.router)
+app.include_router(practical_sets.router)
+app.include_router(analytics.router)
 
 if __name__ == "__main__":
     import uvicorn
