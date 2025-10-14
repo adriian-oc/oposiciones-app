@@ -304,14 +304,21 @@ const Admin = () => {
         {activeTab === 'themes' && (
           <div className="bg-white rounded-lg shadow p-6" data-testid="themes-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Temas del Temario</h2>
+            <p className="text-sm text-gray-600 mb-6">Total de temas: {themes.length}</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* General Themes */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Temas Generales (23)</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center justify-between">
+                  <span>Temas Generales</span>
+                  <span className="text-sm font-normal text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                    {themes.filter((t) => t.part === 'GENERAL').length} temas
+                  </span>
+                </h3>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {themes
                     .filter((t) => t.part === 'GENERAL')
+                    .sort((a, b) => a.order - b.order)
                     .map((theme) => (
                       <div key={theme.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200" data-testid={`theme-${theme.code}`}>
                         <div className="font-medium text-sm text-blue-900">{theme.code}</div>
@@ -323,10 +330,16 @@ const Admin = () => {
 
               {/* Specific Themes */}
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Temas Específicos (13)</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center justify-between">
+                  <span>Temas Específicos</span>
+                  <span className="text-sm font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                    {themes.filter((t) => t.part === 'SPECIFIC').length} temas
+                  </span>
+                </h3>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {themes
                     .filter((t) => t.part === 'SPECIFIC')
+                    .sort((a, b) => a.order - b.order)
                     .map((theme) => (
                       <div key={theme.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200" data-testid={`theme-${theme.code}`}>
                         <div className="font-medium text-sm text-purple-900">{theme.code}</div>
