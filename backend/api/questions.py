@@ -20,6 +20,7 @@ async def get_questions(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all questions with optional filters"""
+    question_service = get_question_service()
     questions = question_service.get_questions(theme_id, limit, skip)
     return [QuestionResponse(**q) for q in questions]
 
