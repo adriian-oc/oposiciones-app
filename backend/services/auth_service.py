@@ -14,19 +14,17 @@ class AuthService:
     
     def register(self, user_data: UserCreate) -> UserInDB:
         # Check if email already exists
-        repo = self._get_repo()
-        if repo.email_exists(user_data.email):
+        if self.user_repo.email_exists(user_data.email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
         
-        user = repo.create(user_data)
+        user = self.user_repo.create(user_data)
         return user
     
     def login(self, credentials: UserLogin) -> Token:
-        repo = self._get_repo()
-        user = repo.get_by_email(credentials.email)
+        user = self.user_repo.get_by_email(credentials.email)
         
         if not user or not verify_password(credentials.password, user["hashed_password"]):
             raise HTTPException(
