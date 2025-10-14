@@ -4,7 +4,9 @@ from services.auth_service import AuthService
 from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-auth_service = AuthService()
+
+def get_auth_service():
+    return AuthService()
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate):
