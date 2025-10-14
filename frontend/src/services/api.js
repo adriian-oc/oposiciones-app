@@ -3,6 +3,8 @@ import axios from 'axios';
 // Use HTTPS URL directly to avoid Mixed Content errors
 const API_BASE_URL = 'https://theme-loader.preview.emergentagent.com';
 
+console.log('🔧 API_BASE_URL configured as:', API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
