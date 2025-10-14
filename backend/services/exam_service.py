@@ -270,7 +270,7 @@ class ExamService:
             "details": score_result
         }
     
-    def _calculate_score(self, questions: List[dict], answers: Dict[str, Any]) -> dict:
+    def _calculate_score(self, questions: List[dict], answers: Dict[str, Any], exam_type: str = "THEORY") -> dict:
         """Calculate exam score based on rules: +1 correct, -0.25 incorrect, 0 unanswered"""
         total_questions = len(questions)
         correct = 0
@@ -311,8 +311,10 @@ class ExamService:
         raw_score = (correct * 1.0) + (incorrect * -0.25)
         raw_score = max(raw_score, 0)  # Non-negative
         
-        # Scale to 70 points (as per requirements)
-        final_score = (raw_score / total_questions) * 70 if total_questions > 0 else 0
+        # Scale based on exam type
+        # SIMULACRO: scale to 100, others: scale to 70
+        scale = 100 if exam_type == "SIMULACRO" else 70
+        final_score = (raw_score / total_questions) * scale if total_questions > 0 else 0
         
         return {
             "total_questions": total_questions,
@@ -321,6 +323,8 @@ class ExamService:
             "unanswered": unanswered,
             "raw_score": raw_score,
             "final_score": round(final_score, 2),
+            "scale": scale,
+            "exam_type": exam_type,
             "results": results
         }
     
