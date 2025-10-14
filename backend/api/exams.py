@@ -69,3 +69,13 @@ async def get_attempt_results(
     exam_service = get_exam_service()
     result = exam_service.get_attempt_results(attempt_id, current_user["id"])
     return result
+
+@router.get("/history")
+async def get_exam_history(
+    limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's exam history"""
+    exam_service = get_exam_service()
+    history = exam_service.get_user_exam_history(current_user["id"], limit)
+    return {"history": history, "total": len(history)}
