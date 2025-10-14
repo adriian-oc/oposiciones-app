@@ -176,6 +176,17 @@ class ExamService:
         
         self.exam_repo.update_attempt(attempt_id, update_data)
         
+        # Record analytics
+        try:
+            self.analytics_service.record_attempt_results(
+                attempt_id=attempt_id,
+                user_id=user_id,
+                results=score_result["results"]
+            )
+        except Exception as e:
+            logger.error(f"Failed to record analytics: {e}")
+            # Don't fail the attempt if analytics fails
+        
         return {
             "attempt_id": attempt_id,
             "score": score_result["final_score"],
