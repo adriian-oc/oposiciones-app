@@ -69,6 +69,24 @@ const AppRoutes = () => {
         }
       />
 
+      <Route
+        path="/exams/history"
+        element={
+          <PrivateRoute>
+            <ExamHistory />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/analytics"
+        element={
+          <PrivateRoute>
+            <Analytics />
+          </PrivateRoute>
+        }
+      />
+
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
