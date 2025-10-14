@@ -15,6 +15,7 @@ async def get_themes(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all themes, optionally filtered by part"""
+    theme_service = get_theme_service()
     themes = theme_service.get_all_themes(part)
     return [ThemeResponse(**theme) for theme in themes]
 
@@ -24,6 +25,7 @@ async def create_theme(
     current_user: dict = Depends(require_role(["admin"]))
 ):
     """Create a new theme (admin only)"""
+    theme_service = get_theme_service()
     theme = theme_service.create_theme(theme_data)
     return ThemeResponse(**theme)
 
@@ -33,5 +35,6 @@ async def get_theme(
     current_user: dict = Depends(get_current_user)
 ):
     """Get theme by ID"""
+    theme_service = get_theme_service()
     theme = theme_service.get_theme_by_id(theme_id)
     return ThemeResponse(**theme)
