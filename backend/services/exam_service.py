@@ -263,3 +263,24 @@ class ExamService:
             )
         
         return attempt
+    
+    def get_user_exam_history(self, user_id: str, limit: int = 50) -> List[dict]:
+        """Get user's exam history"""
+        attempts = self.exam_repo.get_attempts_by_user(user_id, limit)
+        
+        history = []
+        for attempt in attempts:
+            exam = self.exam_repo.get_exam_by_id(attempt["exam_id"])
+            
+            history.append({
+                "attempt_id": attempt["id"],
+                "exam_id": attempt["exam_id"],
+                "exam_name": exam["name"] if exam else "Unknown",
+                "exam_type": exam["type"] if exam else "Unknown",
+                "started_at": attempt["started_at"],
+                "finished_at": attempt.get("finished_at"),
+                "score": attempt.get("score"),
+                "is_completed": attempt.get("finished_at") is not None
+            })
+        
+        return history
