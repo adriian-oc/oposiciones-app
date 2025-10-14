@@ -15,6 +15,9 @@ class ExamService:
     def __init__(self):
         self.exam_repo = ExamRepository()
         self.question_repo = QuestionRepository()
+        # Import here to avoid circular dependency
+        from services.analytics_service import AnalyticsService
+        self.analytics_service = AnalyticsService()
     
     def generate_exam(self, exam_data: ExamCreate, user_id: str) -> dict:
         """Generate an exam by selecting random questions from specified themes"""
