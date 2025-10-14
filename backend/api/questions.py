@@ -8,7 +8,9 @@ from middleware.auth import get_current_user, require_role
 import json
 
 router = APIRouter(prefix="/api/questions", tags=["questions"])
-question_service = QuestionService()
+
+def get_question_service():
+    return QuestionService()
 
 @router.get("/", response_model=List[QuestionResponse])
 async def get_questions(
