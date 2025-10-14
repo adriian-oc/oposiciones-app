@@ -11,6 +11,8 @@ import Admin from './pages/Admin';
 import ExamGenerator from './pages/ExamGenerator';
 import TakeExam from './pages/TakeExam';
 import ExamResults from './pages/ExamResults';
+import ExamHistory from './pages/ExamHistory';
+import Analytics from './pages/Analytics';
 
 const AppRoutes = () => {
   const { user } = useAuth();
