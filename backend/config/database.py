@@ -23,6 +23,12 @@ def connect_to_mongo():
         Database.db.questions.create_index([("created_at", DESCENDING)])
         Database.db.attempts.create_index([("user_id", ASCENDING)])
         Database.db.attempts.create_index([("exam_id", ASCENDING)])
+        Database.db.practical_sets.create_index([("created_at", DESCENDING)])
+        Database.db.practical_sets.create_index([("is_active", ASCENDING)])
+        Database.db.analytics_failures.create_index([("user_id", ASCENDING)])
+        Database.db.analytics_failures.create_index([("theme_id", ASCENDING)])
+        Database.db.analytics_failures.create_index([("failed_at", DESCENDING)])
+        Database.db.user_theme_stats.create_index([("user_id", ASCENDING), ("theme_id", ASCENDING)], unique=True)
         
         logger.info("Connected to MongoDB successfully")
     except Exception as e:
