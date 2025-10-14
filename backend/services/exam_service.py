@@ -241,8 +241,8 @@ class ExamService:
                 detail="Exam not found"
             )
         
-        # Calculate score
-        score_result = self._calculate_score(exam["questions"], attempt.get("answers", {}))
+        # Calculate score with exam type
+        score_result = self._calculate_score(exam["questions"], attempt.get("answers", {}), exam["type"])
         
         # Update attempt
         update_data = {
