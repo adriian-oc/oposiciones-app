@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List
 from models.exam import ExamCreate, ExamResponse, AttemptStart, AnswerSubmit, AttemptResponse
 from services.exam_service import ExamService
