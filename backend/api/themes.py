@@ -5,7 +5,9 @@ from services.theme_service import ThemeService
 from middleware.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/themes", tags=["themes"])
-theme_service = ThemeService()
+
+def get_theme_service():
+    return ThemeService()
 
 @router.get("/", response_model=List[ThemeResponse])
 async def get_themes(
