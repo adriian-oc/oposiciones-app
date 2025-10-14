@@ -10,12 +10,7 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self):
-        self.user_repo = None
-    
-    def _get_repo(self):
-        if self.user_repo is None:
-            self.user_repo = UserRepository()
-        return self.user_repo
+        self.user_repo = UserRepository()
     
     def register(self, user_data: UserCreate) -> UserInDB:
         # Check if email already exists
