@@ -22,6 +22,10 @@ class ExamService:
     def generate_exam(self, exam_data: ExamCreate, user_id: str) -> dict:
         """Generate an exam by selecting random questions from specified themes"""
         
+        # Special handling for SIMULACRO type
+        if exam_data.type == "SIMULACRO":
+            return self._generate_simulacro(exam_data, user_id)
+        
         # Validate theme_ids
         if not exam_data.theme_ids:
             raise HTTPException(
@@ -70,6 +74,79 @@ class ExamService:
             "name": created_exam.name,
             "theme_ids": created_exam.theme_ids,
             "question_count": len(created_exam.questions),
+            "created_at": created_exam.created_at
+        }
+    
+    def _generate_simulacro(self, exam_data: ExamCreate, user_id: str) -> dict:
+        """Generate simulacro with 40 questions: 30% general (12) + 70% specific (28)"""
+        from repositories.theme_repository import ThemeRepository
+        theme_repo = ThemeRepository()
+        
+        # Get all general and specific themes
+        general_themes = theme_repo.get_all(part="GENERAL")
+        specific_themes = theme_repo.get_all(part="SPECIFIC")
+        
+        if not general_themes or not specific_themes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="General or specific themes not found. Please seed themes first."
+            )
+        
+        general_theme_ids = [t["id"] for t in general_themes]
+        specific_theme_ids = [t["id"] for t in specific_themes]
+        
+        # Get 12 questions from general themes (30% of 40)
+        general_questions = self.question_repo.get_random_by_themes(general_theme_ids, 12)
+        
+        # Get 28 questions from specific themes (70% of 40)
+        specific_questions = self.question_repo.get_random_by_themes(specific_theme_ids, 28)
+        
+        if len(general_questions) < 12:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Not enough general questions. Found {len(general_questions)}, need 12"
+            )
+        
+        if len(specific_questions) < 28:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Not enough specific questions. Found {len(specific_questions)}, need 28"
+            )
+        
+        # Combine questions
+        all_questions = general_questions + specific_questions
+        
+        # Create snapshots
+        question_snapshots = []
+        for q in all_questions:
+            snapshot = QuestionSnapshot(
+                question_id=q["id"],
+                text=q["text"],
+                choices=q["choices"],
+                correct_answer=q["correct_answer"],
+                theme_id=q["theme_id"]
+            )
+            question_snapshots.append(snapshot)
+        
+        # Create exam
+        exam = ExamInDB(
+            type="SIMULACRO",
+            name=exam_data.name or "Simulacro Completo",
+            theme_ids=general_theme_ids + specific_theme_ids,
+            questions=question_snapshots,
+            created_by=user_id
+        )
+        
+        created_exam = self.exam_repo.create_exam(exam)
+        
+        return {
+            "id": created_exam.id,
+            "type": created_exam.type,
+            "name": created_exam.name,
+            "theme_ids": created_exam.theme_ids,
+            "question_count": len(created_exam.questions),
+            "general_questions": 12,
+            "specific_questions": 28,
             "created_at": created_exam.created_at
         }
     
