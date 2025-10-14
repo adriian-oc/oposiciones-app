@@ -33,4 +33,9 @@ export const examService = {
     const response = await api.get(`/api/exams/attempts/${attemptId}/results`);
     return response.data;
   },
+
+  async getHistory(limit = 50) {
+    const response = await api.get(`/api/exams/history?limit=${limit}`);
+    return response.data;
+  },
 };
