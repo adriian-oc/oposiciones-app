@@ -25,6 +25,7 @@ async def register(user_data: UserCreate):
 @router.post("/login", response_model=Token)
 async def login(credentials: UserLogin):
     """Login and get access token"""
+    auth_service = get_auth_service()
     return auth_service.login(credentials)
 
 @router.get("/me", response_model=UserResponse)
