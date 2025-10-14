@@ -5,7 +5,9 @@ from services.exam_service import ExamService
 from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/exams", tags=["exams"])
-exam_service = ExamService()
+
+def get_exam_service():
+    return ExamService()
 
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate_exam(
