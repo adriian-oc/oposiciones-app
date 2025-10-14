@@ -50,3 +50,10 @@ class ExamRepository:
             .sort("started_at", -1)
             .limit(limit)
         )
+    
+    def get_user_attempts(self, user_id: str) -> List[dict]:
+        """Get all attempts for a user (for analytics)"""
+        return list(
+            self.attempt_collection.find({"user_id": user_id}, {"_id": 0})
+            .sort("started_at", -1)
+        )
