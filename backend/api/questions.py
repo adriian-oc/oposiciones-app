@@ -30,6 +30,7 @@ async def create_question(
     current_user: dict = Depends(require_role(["admin", "curator"]))
 ):
     """Create a new question (admin/curator only)"""
+    question_service = get_question_service()
     question = question_service.create_question(question_data, current_user["id"])
     return QuestionResponse(**question)
 
@@ -39,6 +40,7 @@ async def get_question(
     current_user: dict = Depends(get_current_user)
 ):
     """Get question by ID"""
+    question_service = get_question_service()
     question = question_service.get_question_by_id(question_id)
     return QuestionResponse(**question)
 
@@ -49,6 +51,7 @@ async def update_question(
     current_user: dict = Depends(require_role(["admin", "curator"]))
 ):
     """Update a question (admin/curator only)"""
+    question_service = get_question_service()
     question = question_service.update_question(question_id, question_data)
     return QuestionResponse(**question)
 
@@ -58,6 +61,7 @@ async def delete_question(
     current_user: dict = Depends(require_role(["admin", "curator"]))
 ):
     """Delete a question (admin/curator only)"""
+    question_service = get_question_service()
     success = question_service.delete_question(question_id)
     return {"message": "Question deleted successfully", "success": success}
 
@@ -72,6 +76,7 @@ async def upload_bulk_questions(
         data = json.loads(content)
         
         upload_data = BulkQuestionsUpload(**data)
+        question_service = get_question_service()
         result = question_service.upload_bulk_questions(upload_data, current_user["id"])
         
         return result
@@ -97,6 +102,7 @@ async def upload_practical_set(
         data = json.loads(content)
         
         upload_data = PracticalSetUpload(**data)
+        question_service = get_question_service()
         result = question_service.upload_practical_set(upload_data, current_user["id"])
         
         return result
