@@ -40,7 +40,7 @@ const Layout = ({ children }) => {
                   Inicio
                 </Link>
                 <Link
-                  to="/exams"
+                  to="/exams/new"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     isActive('/exams')
                       ? 'border-primary-500 text-gray-900'

@@ -35,10 +35,30 @@ const ExamGenerator = () => {
     }
   };
 
+  const generateAutoName = (type) => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    
+    switch(type) {
+      case 'SIMULACRO':
+        return `Simulacro ${dateStr} ${timeStr}`;
+      case 'THEORY_TOPIC':
+        return `Examen por Tema ${dateStr} ${timeStr}`;
+      case 'THEORY_MIXED':
+        return `Examen Mixto ${dateStr} ${timeStr}`;
+      case 'PRACTICAL':
+        return `Supuesto Práctico ${dateStr} ${timeStr}`;
+      default:
+        return `Examen ${dateStr} ${timeStr}`;
+    }
+  };
+
   const handleTypeChange = (newType) => {
     setFormData({
       ...formData,
       type: newType,
+      name: generateAutoName(newType),
       theme_ids: [],
       question_count: newType === 'SIMULACRO' ? 40 : 10,
     });
@@ -72,7 +92,7 @@ const ExamGenerator = () => {
       setError('');
       try {
         const exam = await examService.generateExam({
-          name: formData.name || 'Simulacro Completo',
+          name: formData.name || generateAutoName('SIMULACRO'),
           type: 'SIMULACRO',
           theme_ids: [],
           question_count: 40
@@ -96,7 +116,11 @@ const ExamGenerator = () => {
     setError('');
 
     try {
-      const exam = await examService.generateExam(formData);
+      const examName = formData.name || generateAutoName(formData.type);
+      const exam = await examService.generateExam({
+        ...formData,
+        name: examName
+      });
       const attempt = await examService.startAttempt(exam.id);
       navigate(`/exams/take/${attempt.id}`);
     } catch (err) {
@@ -158,16 +182,16 @@ const ExamGenerator = () => {
 
           {/* Exam Name */}
           <div className="bg-white rounded-lg shadow p-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Examen</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Examen (generado automáticamente)</label>
             <input
               type="text"
-              required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder={formData.type === 'SIMULACRO' ? 'Simulacro Completo' : 'Ej: Examen Temas 1-5'}
+              placeholder={generateAutoName(formData.type)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               data-testid="exam-name-input"
             />
+            <p className="mt-1 text-xs text-gray-500">Puedes personalizar el nombre o dejarlo automático</p>
           </div>
 
           {/* Question Count (only for non-simulacro) */}
@@ -179,7 +203,7 @@ const ExamGenerator = () => {
               <input
                 type="range"
                 min="5"
-                max="50"
+                max="70"
                 value={formData.question_count}
                 onChange={(e) => setFormData({ ...formData, question_count: parseInt(e.target.value) })}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -187,7 +211,7 @@ const ExamGenerator = () => {
               />
               <div className="flex justify-between text-xs text-gray-500 mt-2">
                 <span>5 preguntas</span>
-                <span>50 preguntas</span>
+                <span>70 preguntas</span>
               </div>
             </div>
           )}
