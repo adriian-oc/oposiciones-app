@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
-from api import auth, themes, questions, exams
+from api import auth, themes, questions, exams, practical_sets, analytics
 import logging
 
 # Configure logging
