@@ -11,6 +11,7 @@ def get_auth_service():
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate):
     """Register a new user"""
+    auth_service = get_auth_service()
     user = auth_service.register(user_data)
     return UserResponse(
         id=user.id,
