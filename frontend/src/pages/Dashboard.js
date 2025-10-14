@@ -97,22 +97,60 @@ const Dashboard = () => {
         </div>
 
         {/* Stats section */}
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-200" data-testid="stats-section">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Estadísticas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary-600">0</div>
-              <div className="text-sm text-gray-600 mt-1">Exámenes realizados</div>
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Cargando estadísticas...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center" data-testid="exams-completed-stat">
+                <div className="text-3xl font-bold text-blue-600">
+                  {stats?.total_exams_completed || 0}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">Exámenes realizados</div>
+              </div>
+              <div className="text-center" data-testid="accuracy-stat">
+                <div className="text-3xl font-bold text-green-600">
+                  {stats?.overall_accuracy || 0}%
+                </div>
+                <div className="text-sm text-gray-600 mt-1">Tasa de acierto</div>
+              </div>
+              <div className="text-center" data-testid="questions-answered-stat">
+                <div className="text-3xl font-bold text-purple-600">
+                  {stats?.total_questions_answered || 0}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">Preguntas respondidas</div>
+              </div>
+              <div className="text-center" data-testid="best-score-stat">
+                <div className="text-3xl font-bold text-orange-600">
+                  {stats?.best_score || 0}
+                </div>
+                <div className="text-sm text-gray-600 mt-1">Mejor puntuación</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">0%</div>
-              <div className="text-sm text-gray-600 mt-1">Tasa de acierto</div>
+          )}
+          
+          {stats && stats.weak_themes_count > 0 && (
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Tienes {stats.weak_themes_count} temas con rendimiento bajo
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Te recomendamos revisar tu plan de estudio personalizado
+                  </p>
+                </div>
+                <Link 
+                  to="/analytics" 
+                  className="text-sm font-medium text-yellow-600 hover:text-yellow-700"
+                  data-testid="view-analytics-link"
+                >
+                  Ver detalles →
+                </Link>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">0</div>
-              <div className="text-sm text-gray-600 mt-1">Preguntas respondidas</div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </Layout>
