@@ -212,6 +212,7 @@ class ExamService:
             results.append({
                 "question_id": question_id,
                 "question_text": question["text"],
+                "theme_id": question.get("theme_id"),  # Include theme_id for analytics
                 "selected_answer": selected_answer,
                 "correct_answer": correct_answer,
                 "is_correct": is_correct,
