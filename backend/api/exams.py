@@ -15,6 +15,7 @@ async def generate_exam(
     current_user: dict = Depends(get_current_user)
 ):
     """Generate a new exam with random questions from selected themes"""
+    exam_service = get_exam_service()
     exam = exam_service.generate_exam(exam_data, current_user["id"])
     return exam
 
@@ -24,6 +25,7 @@ async def get_exam(
     current_user: dict = Depends(get_current_user)
 ):
     """Get exam details"""
+    exam_service = get_exam_service()
     exam = exam_service.get_exam(exam_id)
     return exam
 
@@ -33,6 +35,7 @@ async def start_attempt(
     current_user: dict = Depends(get_current_user)
 ):
     """Start a new exam attempt"""
+    exam_service = get_exam_service()
     attempt = exam_service.start_attempt(attempt_data.exam_id, current_user["id"])
     return attempt
 
@@ -43,6 +46,7 @@ async def submit_answer(
     current_user: dict = Depends(get_current_user)
 ):
     """Submit an answer for a question in an attempt"""
+    exam_service = get_exam_service()
     result = exam_service.submit_answer(attempt_id, answer, current_user["id"])
     return result
 
@@ -52,6 +56,7 @@ async def finish_attempt(
     current_user: dict = Depends(get_current_user)
 ):
     """Finish attempt and get results"""
+    exam_service = get_exam_service()
     result = exam_service.finish_attempt(attempt_id, current_user["id"])
     return result
 
@@ -61,5 +66,6 @@ async def get_attempt_results(
     current_user: dict = Depends(get_current_user)
 ):
     """Get attempt results"""
+    exam_service = get_exam_service()
     result = exam_service.get_attempt_results(attempt_id, current_user["id"])
     return result
