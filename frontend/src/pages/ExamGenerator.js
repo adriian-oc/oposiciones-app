@@ -29,6 +29,16 @@ const ExamGenerator = () => {
     }
   };
 
+  const handleTypeChange = (newType) => {
+    setFormData({
+      ...formData,
+      type: newType,
+      theme_ids: [],
+      question_count: newType === 'SIMULACRO' ? 40 : 10,
+    });
+    setError('');
+  };
+
   const handleThemeToggle = (themeId) => {
     const newThemeIds = formData.theme_ids.includes(themeId)
       ? formData.theme_ids.filter((id) => id !== themeId)
