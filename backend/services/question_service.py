@@ -1,7 +1,7 @@
 from repositories.question_repository import QuestionRepository
 from repositories.theme_repository import ThemeRepository
 from models.question import (
-    QuestionCreate, QuestionInDB, BulkQuestionsUpload, 
+    QuestionCreate, QuestionInDB, BulkQuestionsUpload,
     PracticalSetUpload, QuestionUploadItem
 )
 from typing import List, Optional
@@ -87,51 +87,65 @@ class QuestionService:
         
         return self.question_repo.delete(question_id)
     
-    def upload_bulk_questions(self, upload_data: BulkQuestionsUpload, user_id: str) -> dict:
-        """Upload multiple questions for a theme"""
-        # Validate theme exists
-        theme = self.theme_repo.get_by_code(upload_data.theme_code)
-        if not theme:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Theme with code {upload_data.theme_code} not found"
-            )
+    def upload_bulk_questions(self, upload_data_list: List[BulkQuestionsUpload], user_id: str) -> dict:
+        """Upload multiple questions for multiple themes"""
+        all_created_ids = []
+        all_errors = []
         
-        created_questions = []
-        errors = []
-        
-        for idx, q_data in enumerate(upload_data.questions):
-            try:
-                # Validate
-                if len(q_data.choices) < 2:
-                    errors.append({"line": idx + 1, "error": "At least 2 choices required"})
-                    continue
-                
-                if q_data.correct_answer < 0 or q_data.correct_answer >= len(q_data.choices):
-                    errors.append({"line": idx + 1, "error": "Invalid correct_answer index"})
-                    continue
-                
-                # Create question
-                question_create = QuestionCreate(
-                    theme_id=theme["id"],
-                    text=q_data.text,
-                    choices=q_data.choices,
-                    correct_answer=q_data.correct_answer,
-                    difficulty=q_data.difficulty,
-                    tags=q_data.tags
-                )
-                
-                question = self.question_repo.create(question_create, user_id)
-                created_questions.append(question.id)
-                
-            except Exception as e:
-                errors.append({"line": idx + 1, "error": str(e)})
+        for upload_data in upload_data_list:
+            # Validate theme exists
+            theme = self.theme_repo.get_by_code(upload_data.theme_code)
+            if not theme:
+                all_errors.append({
+                    "theme_code": upload_data.theme_code,
+                    "error": f"Theme with code {upload_data.theme_code} not found"
+                })
+                continue
+            
+            for idx, q_data in enumerate(upload_data.questions):
+                try:
+                    # Validate
+                    if len(q_data.choices) < 2:
+                        all_errors.append({
+                            "theme_code": upload_data.theme_code,
+                            "line": idx + 1,
+                            "error": "At least 2 choices required"
+                        })
+                        continue
+                    
+                    if q_data.correct_answer < 0 or q_data.correct_answer >= len(q_data.choices):
+                        all_errors.append({
+                            "theme_code": upload_data.theme_code,
+                            "line": idx + 1,
+                            "error": "Invalid correct_answer index"
+                        })
+                        continue
+                    
+                    # Create question
+                    question_create = QuestionCreate(
+                        theme_id=theme["id"],
+                        text=q_data.text,
+                        choices=q_data.choices,
+                        correct_answer=q_data.correct_answer,
+                        difficulty=q_data.difficulty,
+                        tags=q_data.tags
+                    )
+                    
+                    question = self.question_repo.create(question_create, user_id)
+                    all_created_ids.append(question.id)
+                    
+                except Exception as e:
+                    all_errors.append({
+                        "theme_code": upload_data.theme_code,
+                        "line": idx + 1,
+                        "error": str(e)
+                    })
         
         return {
-            "success": len(created_questions),
-            "errors": len(errors),
-            "created_ids": created_questions,
-            "error_details": errors
+            "success": len(all_created_ids),
+            "errors": len(all_errors),
+            "created_ids": all_created_ids,
+            "error_details": all_errors
         }
     
     def upload_practical_set(self, upload_data: PracticalSetUpload, user_id: str) -> dict:

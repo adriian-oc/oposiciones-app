@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, File, UploadFile, HTTPException, status
 from typing import List, Optional
 from models.question import (
-    QuestionCreate, QuestionResponse, BulkQuestionsUpload, PracticalSetUpload
+    QuestionCreate, QuestionResponse, ListBulkQuestionsUpload, PracticalSetUpload
 )
 from services.question_service import QuestionService
 from middleware.auth import get_current_user, require_role
@@ -75,9 +75,9 @@ async def upload_bulk_questions(
         content = await file.read()
         data = json.loads(content)
         
-        upload_data = BulkQuestionsUpload(**data)
+        upload_data = ListBulkQuestionsUpload(**data)
         question_service = get_question_service()
-        result = question_service.upload_bulk_questions(upload_data, current_user["id"])
+        result = question_service.upload_bulk_questions(upload_data.uploads, current_user["id"])
         
         return result
     except json.JSONDecodeError:
