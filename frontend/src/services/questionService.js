@@ -47,21 +47,49 @@ export const questionService = {
 
   downloadBulkTemplate() {
     const template = {
-      theme_code: "GENERAL_01",
-      questions: [
+      uploads: [
         {
-          text: "¿Pregunta de ejemplo?",
-          choices: [
-            "Opción A",
-            "Opción B",
-            "Opción C",
-            "Opción D"
+          theme_code: "GENERAL_01",
+          questions: [
+            {
+              text: "¿Cuántos Títulos componen la Constitución Española de 1978?",
+              choices: ["10", "11", "9", "8"],
+              correct_answer: 1,
+              difficulty: "MEDIUM",
+              tags: ["constitución", "estructura"],
+            },
+            {
+              text: "¿Qué mayoría se requiere para la reforma agravada del Título Preliminar?",
+              choices: [
+                "Mayoría simple",
+                "3/5 de cada Cámara",
+                "2/3 de cada Cámara",
+                "Unanimidad",
+              ],
+              correct_answer: 2,
+              difficulty: "HARD",
+              tags: ["reforma_constitucional"],
+            },
           ],
-          correct_answer: 0,
-          difficulty: "MEDIUM",
-          tags: ["ejemplo", "plantilla"]
-        }
-      ]
+        },
+        {
+          theme_code: "GENERAL_02",
+          questions: [
+            {
+              text: "¿Cuál de los siguientes derechos puede ser suspendido en estado de excepción?",
+              choices: [
+                "Libertad de expresión",
+                "Habeas corpus",
+                "Derecho a la educación",
+                "Derecho de asociación",
+              ],
+              correct_answer: 1,
+              difficulty: "MEDIUM",
+              tags: ["derechos_fundamentales"],
+            },
+          ],
+        },
+      ],
     };
     
     const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
