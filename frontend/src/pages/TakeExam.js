@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { examService } from '../services/examService';
@@ -6,26 +6,21 @@ import { examService } from '../services/examService';
 const TakeExam = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
-  const [attempt, setAttempt] = useState(null);
   const [exam, setExam] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadAttempt();
-  }, [attemptId]);
-
-  const loadAttempt = async () => {
+  const loadAttempt = useCallback(async () => {
     try {
       const data = await examService.getAttemptResults(attemptId);
-      setAttempt(data);
-      setExam(data.exam || data);
+      const exam_data = await examService.getExam(data.exam_id);
+      setExam(exam_data.exam || exam_data);
       
       // Initialize answers from saved state
-      if (data.answers) {
-        setAnswers(data.answers);
+      if (exam_data.answers) {
+        setAnswers(exam_data.answers);
       }
     } catch (error) {
       console.error('Error loading attempt:', error);
@@ -33,7 +28,11 @@ const TakeExam = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [attemptId]);
+
+  useEffect(() => {
+    loadAttempt();
+  }, [loadAttempt]);
 
   const handleAnswerSelect = async (questionId, answerIndex) => {
     const newAnswers = { ...answers, [questionId]: answerIndex };

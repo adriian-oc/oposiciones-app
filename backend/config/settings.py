@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 43200
+    mongo_db_name: str
     
     class Config:
         env_file = ".env"

@@ -1,12 +1,13 @@
 from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.database import Database as PyMongoDatabase
 from config.settings import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
 class Database:
-    client: MongoClient = None
-    db = None
+    client: MongoClient
+    db: PyMongoDatabase
 
 def get_database():
     return Database.db
@@ -14,7 +15,7 @@ def get_database():
 def connect_to_mongo():
     try:
         Database.client = MongoClient(settings.mongo_url)
-        Database.db = Database.client.get_database()
+        Database.db = Database.client.get_database(name=settings.mongo_db_name)
         
         # Create indexes
         Database.db.users.create_index([("email", ASCENDING)], unique=True)

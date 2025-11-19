@@ -40,6 +40,9 @@ class BulkQuestionsUpload(BaseModel):
     theme_code: str
     questions: List[QuestionUploadItem]
 
+class ListBulkQuestionsUpload(BaseModel):
+    uploads: List[BulkQuestionsUpload]
+
 class PracticalSetQuestion(BaseModel):
     position: int
     text: str
