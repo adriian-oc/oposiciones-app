@@ -4,12 +4,16 @@ from models.exam import (
     ExamCreate, ExamInDB, QuestionSnapshot, 
     AttemptStart, AttemptInDB, AnswerSubmit
 )
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
+
+EXAM_NOT_FOUND_MESSAGE = "Exam not found"
+ATTEMPT_NOT_FOUND_MESSAGE = "Attempt not found"
+NOT_AUTHORIZED_MESSAGE = "Not authorized"
 
 class ExamService:
     def __init__(self):
@@ -156,7 +160,7 @@ class ExamService:
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Exam not found"
+                detail=EXAM_NOT_FOUND_MESSAGE
             )
         return exam
     
@@ -166,7 +170,7 @@ class ExamService:
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Exam not found"
+                detail=EXAM_NOT_FOUND_MESSAGE
             )
         
         attempt = AttemptInDB(
@@ -189,13 +193,13 @@ class ExamService:
         if not attempt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Attempt not found"
+                detail=ATTEMPT_NOT_FOUND_MESSAGE
             )
         
         if attempt["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized"
+                detail=NOT_AUTHORIZED_MESSAGE
             )
         
         if attempt.get("finished_at"):
@@ -218,13 +222,13 @@ class ExamService:
         if not attempt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Attempt not found"
+                detail=ATTEMPT_NOT_FOUND_MESSAGE
             )
         
         if attempt["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized"
+                detail=NOT_AUTHORIZED_MESSAGE
             )
         
         if attempt.get("finished_at"):
@@ -238,7 +242,7 @@ class ExamService:
         if not exam:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Exam not found"
+                detail=EXAM_NOT_FOUND_MESSAGE
             )
         
         # Calculate score with exam type
@@ -246,7 +250,7 @@ class ExamService:
         
         # Update attempt
         update_data = {
-            "finished_at": datetime.utcnow(),
+            "finished_at": datetime.now(timezone.utc),
             "score": score_result["final_score"],
             "details": score_result
         }
@@ -288,7 +292,6 @@ class ExamService:
             
             if selected_answer is None:
                 unanswered += 1
-                status = "unanswered"
             elif selected_answer == correct_answer:
                 correct += 1
                 is_correct = True
@@ -300,6 +303,7 @@ class ExamService:
             results.append({
                 "question_id": question_id,
                 "question_text": question["text"],
+                "choices": question.get("choices", []),
                 "theme_id": question.get("theme_id"),  # Include theme_id for analytics
                 "selected_answer": selected_answer,
                 "correct_answer": correct_answer,
@@ -334,15 +338,25 @@ class ExamService:
         if not attempt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Attempt not found"
+                detail=ATTEMPT_NOT_FOUND_MESSAGE
             )
         
         if attempt["user_id"] != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized"
+                detail=NOT_AUTHORIZED_MESSAGE
             )
         
+        exam = self.exam_repo.get_exam_by_id(attempt["exam_id"])
+        if not exam:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=EXAM_NOT_FOUND_MESSAGE
+            )
+
+        details = self._ensure_attempt_details(attempt, exam, attempt_id)
+        attempt["details"] = details
+        attempt["exam"] = self._build_exam_summary(exam)
         return attempt
     
     def get_user_exam_history(self, user_id: str, limit: int = 50) -> List[dict]:
@@ -365,3 +379,54 @@ class ExamService:
             })
         
         return history
+
+    def _ensure_attempt_details(self, attempt: dict, exam: dict, attempt_id: str) -> dict:
+        details = attempt.get("details")
+        if details:
+            return self._enrich_details_with_exam(details, exam)
+        score_result = self._calculate_score(
+            exam.get("questions", []),
+            attempt.get("answers", {}),
+            exam.get("type", "THEORY")
+        )
+        self.exam_repo.update_attempt(
+            attempt_id,
+            {"details": score_result, "score": score_result["final_score"]}
+        )
+        return score_result
+
+    def _enrich_details_with_exam(self, details: dict, exam: dict) -> dict:
+        results = details.get("results") or []
+        if not results:
+            return details
+        question_lookup = {
+            q.get("question_id"): q for q in exam.get("questions", [])
+        }
+        enriched_results = [
+            self._merge_result_with_question(result, question_lookup.get(result.get("question_id")))
+            for result in results
+        ]
+        return {**details, "results": enriched_results}
+
+    @staticmethod
+    def _merge_result_with_question(result: dict, question: Optional[dict]) -> dict:
+        question_text = result.get("question_text") or (question and question.get("text"))
+        choices = result.get("choices") or (question and question.get("choices", [])) or []
+        correct_answer = result.get("correct_answer")
+        if correct_answer is None and question is not None:
+            correct_answer = question.get("correct_answer")
+        return {
+            **result,
+            "question_text": question_text,
+            "choices": choices,
+            "correct_answer": correct_answer
+        }
+
+    @staticmethod
+    def _build_exam_summary(exam: dict) -> dict:
+        return {
+            "id": exam.get("id"),
+            "name": exam.get("name"),
+            "type": exam.get("type"),
+            "question_count": len(exam.get("questions", []))
+        }
