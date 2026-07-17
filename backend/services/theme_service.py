@@ -9,15 +9,15 @@ class ThemeService:
     def __init__(self):
         self.theme_repo = ThemeRepository()
     
-    def create_theme(self, theme_data: ThemeCreate) -> dict:
-        theme = self.theme_repo.create(theme_data)
+    async def create_theme(self, theme_data: ThemeCreate) -> dict:
+        theme = await self.theme_repo.create(theme_data)
         return theme.model_dump()
-    
-    def get_all_themes(self, part: Optional[str] = None) -> List[dict]:
-        return self.theme_repo.get_all(part)
-    
-    def get_theme_by_id(self, theme_id: str) -> dict:
-        theme = self.theme_repo.get_by_id(theme_id)
+
+    async def get_all_themes(self, part: Optional[str] = None) -> List[dict]:
+        return await self.theme_repo.get_all(part)
+
+    async def get_theme_by_id(self, theme_id: str) -> dict:
+        theme = await self.theme_repo.get_by_id(theme_id)
         if not theme:
             from fastapi import HTTPException, status
             raise HTTPException(
@@ -49,9 +49,9 @@ class ThemeService:
     ]
     GENERAL_THEMES = [(str(i), f"Tema {i}") for i in range(1, 24)]
 
-    def seed_initial_themes(self):
+    async def seed_initial_themes(self):
         """Siembra los temas reales de ADOC (15 específica + 23 general)."""
-        existing = self.theme_repo.get_all()
+        existing = await self.theme_repo.get_all()
         if existing:
             logger.info("Themes already exist, skipping seed")
             return
@@ -62,5 +62,5 @@ class ThemeService:
         for order, (tema_key, name) in enumerate(self.GENERAL_THEMES, start=1):
             themes.append(ThemeCreate(code=f"GENERAL_{tema_key}", name=name, part="GENERAL", order=order))
 
-        self.theme_repo.bulk_create(themes)
+        await self.theme_repo.bulk_create(themes)
         logger.info(f"Seeded {len(themes)} themes successfully")

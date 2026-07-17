@@ -14,52 +14,52 @@ class QuestionService:
     def __init__(self):
         self.question_repo = QuestionRepository()
         self.theme_repo = ThemeRepository()
-    
-    def create_question(self, question_data: QuestionCreate, user_id: str) -> dict:
+
+    async def create_question(self, question_data: QuestionCreate, user_id: str) -> dict:
         # Validate theme exists
-        theme = self.theme_repo.get_by_id(question_data.theme_id)
+        theme = await self.theme_repo.get_by_id(question_data.theme_id)
         if not theme:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Theme not found"
             )
-        
+
         # Validate choices and correct_answer
         if len(question_data.choices) < 2:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="At least 2 choices are required"
             )
-        
+
         if question_data.correct_answer < 0 or question_data.correct_answer >= len(question_data.choices):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid correct_answer index"
             )
-        
-        question = self.question_repo.create(question_data, user_id)
+
+        question = await self.question_repo.create(question_data, user_id)
         return question.model_dump()
-    
-    def get_questions(
+
+    async def get_questions(
         self,
         theme_id: Optional[str] = None,
         limit: int = 100,
         skip: int = 0,
         content_area: Optional[str] = None,
     ) -> List[dict]:
-        return self.question_repo.get_all(theme_id, limit, skip, content_area)
-    
-    def get_question_by_id(self, question_id: str) -> dict:
-        question = self.question_repo.get_by_id(question_id)
+        return await self.question_repo.get_all(theme_id, limit, skip, content_area)
+
+    async def get_question_by_id(self, question_id: str) -> dict:
+        question = await self.question_repo.get_by_id(question_id)
         if not question:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Question not found"
             )
         return question
-    
-    def update_question(self, question_id: str, question_data: dict, edited_by: str) -> dict:
-        existing = self.question_repo.get_by_id(question_id)
+
+    async def update_question(self, question_id: str, question_data: dict, edited_by: str) -> dict:
+        existing = await self.question_repo.get_by_id(question_id)
         if not existing:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -77,47 +77,47 @@ class QuestionService:
         # Sustituye al overlay questionOverrides de ADOC: guarda el estado previo antes de
         # aplicar el cambio, en vez de un doc de corrección aparte referenciado por hash de texto.
         if any(field in question_data for field in ("text", "choices", "correct_answer")):
-            self.question_repo.append_edit_history(question_id, {
+            await self.question_repo.append_edit_history(question_id, {
                 "text": existing["text"],
                 "choices": existing["choices"],
                 "correct_answer": existing["correct_answer"],
                 "edited_by": edited_by,
             })
 
-        success = self.question_repo.update(question_id, question_data)
+        success = await self.question_repo.update(question_id, question_data)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update question"
             )
 
-        return self.question_repo.get_by_id(question_id)
-    
-    def delete_question(self, question_id: str) -> bool:
-        existing = self.question_repo.get_by_id(question_id)
+        return await self.question_repo.get_by_id(question_id)
+
+    async def delete_question(self, question_id: str) -> bool:
+        existing = await self.question_repo.get_by_id(question_id)
         if not existing:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Question not found"
             )
-        
-        return self.question_repo.delete(question_id)
-    
-    def upload_bulk_questions(self, upload_data_list: List[BulkQuestionsUpload], user_id: str) -> dict:
+
+        return await self.question_repo.delete(question_id)
+
+    async def upload_bulk_questions(self, upload_data_list: List[BulkQuestionsUpload], user_id: str) -> dict:
         """Upload multiple questions for multiple themes"""
         all_created_ids = []
         all_errors = []
-        
+
         for upload_data in upload_data_list:
             # Validate theme exists
-            theme = self.theme_repo.get_by_code(upload_data.theme_code)
+            theme = await self.theme_repo.get_by_code(upload_data.theme_code)
             if not theme:
                 all_errors.append({
                     "theme_code": upload_data.theme_code,
                     "error": f"Theme with code {upload_data.theme_code} not found"
                 })
                 continue
-            
+
             for idx, q_data in enumerate(upload_data.questions):
                 try:
                     # Validate
@@ -128,7 +128,7 @@ class QuestionService:
                             "error": "At least 2 choices required"
                         })
                         continue
-                    
+
                     if q_data.correct_answer < 0 or q_data.correct_answer >= len(q_data.choices):
                         all_errors.append({
                             "theme_code": upload_data.theme_code,
@@ -136,7 +136,7 @@ class QuestionService:
                             "error": "Invalid correct_answer index"
                         })
                         continue
-                    
+
                     # Create question
                     question_create = QuestionCreate(
                         theme_id=theme["id"],
@@ -146,24 +146,24 @@ class QuestionService:
                         difficulty=q_data.difficulty,
                         tags=q_data.tags
                     )
-                    
-                    question = self.question_repo.create(question_create, user_id)
+
+                    question = await self.question_repo.create(question_create, user_id)
                     all_created_ids.append(question.id)
-                    
+
                 except Exception as e:
                     all_errors.append({
                         "theme_code": upload_data.theme_code,
                         "line": idx + 1,
                         "error": str(e)
                     })
-        
+
         return {
             "success": len(all_created_ids),
             "errors": len(all_errors),
             "created_ids": all_created_ids,
             "error_details": all_errors
         }
-    
+
     def upload_practical_set(self, upload_data: PracticalSetUpload, user_id: str) -> dict:
         """Upload a practical set (exactly 15 questions)"""
         if len(upload_data.questions) != 15:
@@ -171,41 +171,41 @@ class QuestionService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Practical set must contain exactly 15 questions"
             )
-        
+
         # For MVP, we'll store practical sets as regular questions with special tags
         # In Phase 2, we can add a dedicated practical_sets collection
-        
+
         # Find or use a default theme for practical sets
         # For now, we'll require theme to be specified in future iterations
         # Store as individual questions with special metadata
-        
+
         created_questions = []
         errors = []
-        
+
         for q_data in upload_data.questions:
             try:
                 if len(q_data.choices) < 2:
                     errors.append({"position": q_data.position, "error": "At least 2 choices required"})
                     continue
-                
+
                 if q_data.correct_answer < 0 or q_data.correct_answer >= len(q_data.choices):
                     errors.append({"position": q_data.position, "error": "Invalid correct_answer"})
                     continue
-                
+
                 # For MVP, we'll store metadata about practical set in tags
                 # This allows us to retrieve them as a set later
                 # TODO: In Phase 2, create dedicated practical_sets collection
-                
+
             except Exception as e:
                 errors.append({"position": q_data.position, "error": str(e)})
-        
+
         if errors:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Validation errors in practical set",
                 headers={"errors": str(errors)}
             )
-        
+
         return {
             "message": "Practical set upload will be fully implemented in Phase 2",
             "title": upload_data.title,

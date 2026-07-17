@@ -14,4 +14,4 @@ async def get_content_units(
     current_user: dict = Depends(get_current_user),
 ):
     """Unidades de contenido no interactivas (PDF descargable o 'Próximamente') de un área."""
-    return ContentUnitService().get_by_area(area_id)
+    return await ContentUnitService().get_by_area(area_id)

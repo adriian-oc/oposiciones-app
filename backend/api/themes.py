@@ -16,7 +16,7 @@ async def get_themes(
 ):
     """Get all themes, optionally filtered by part"""
     theme_service = get_theme_service()
-    themes = theme_service.get_all_themes(part)
+    themes = await theme_service.get_all_themes(part)
     return [ThemeResponse(**theme) for theme in themes]
 
 @router.post("/", response_model=ThemeResponse)
@@ -26,7 +26,7 @@ async def create_theme(
 ):
     """Create a new theme (admin only)"""
     theme_service = get_theme_service()
-    theme = theme_service.create_theme(theme_data)
+    theme = await theme_service.create_theme(theme_data)
     return ThemeResponse(**theme)
 
 @router.get("/{theme_id}", response_model=ThemeResponse)
@@ -36,5 +36,5 @@ async def get_theme(
 ):
     """Get theme by ID"""
     theme_service = get_theme_service()
-    theme = theme_service.get_theme_by_id(theme_id)
+    theme = await theme_service.get_theme_by_id(theme_id)
     return ThemeResponse(**theme)

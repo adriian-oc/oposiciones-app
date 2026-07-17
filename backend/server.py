@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
 from services.firebase_service import init_firebase
+from utils.rate_limit import limiter
 from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests
 import logging
 
@@ -20,6 +23,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -33,13 +39,13 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up application...")
-    connect_to_mongo()
+    await connect_to_mongo()
     init_firebase()
 
     # Seed initial themes
     try:
         theme_service = ThemeService()
-        theme_service.seed_initial_themes()
+        await theme_service.seed_initial_themes()
         logger.info("Initial themes seeded successfully")
     except Exception as e:
         logger.error(f"Error seeding themes: {e}")

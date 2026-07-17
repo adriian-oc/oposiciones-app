@@ -38,6 +38,18 @@ const Admin = () => {
     tags: [],
   });
 
+  const loadQuestions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await questionService.getQuestions(selectedTheme || null);
+      setQuestions(data);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedTheme]);
+
   useEffect(() => {
     loadThemes();
   }, []);
@@ -46,7 +58,7 @@ const Admin = () => {
     if (selectedTheme) {
       loadQuestions();
     }
-  }, [selectedTheme]);
+  }, [selectedTheme, loadQuestions]);
 
   const loadRoster = useCallback(async () => {
     setRosterLoading(true);
@@ -153,18 +165,6 @@ const Admin = () => {
       setThemes(data);
     } catch (error) {
       console.error('Error loading themes:', error);
-    }
-  };
-
-  const loadQuestions = async () => {
-    setLoading(true);
-    try {
-      const data = await questionService.getQuestions(selectedTheme || null);
-      setQuestions(data);
-    } catch (error) {
-      console.error('Error loading questions:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

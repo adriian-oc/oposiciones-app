@@ -32,7 +32,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
 
     user_repo = UserRepository()
-    user = user_repo.get_by_firebase_uid(firebase_uid)
+    user = await user_repo.get_by_firebase_uid(firebase_uid)
 
     if user is None:
         raise HTTPException(

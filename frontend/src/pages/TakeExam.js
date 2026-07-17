@@ -67,7 +67,7 @@ const TakeExam = () => {
 
     setSubmitting(true);
     try {
-      const result = await examService.finishAttempt(attemptId);
+      await examService.finishAttempt(attemptId);
       navigate(`/exams/results/${attemptId}`);
     } catch (error) {
       alert('Error al finalizar el examen: ' + (error.response?.data?.detail || error.message));

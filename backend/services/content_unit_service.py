@@ -5,5 +5,5 @@ class ContentUnitService:
     def __init__(self):
         self.repo = ContentUnitRepository()
 
-    def get_by_area(self, area_id: str) -> List[dict]:
-        return self.repo.get_by_area(area_id)
+    async def get_by_area(self, area_id: str) -> List[dict]:
+        return await self.repo.get_by_area(area_id)

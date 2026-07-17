@@ -8,9 +8,9 @@ backend corriendo en localhost:8000 (para probar /api/auth/me al final).
 
 Uso: cd backend && source venv/bin/activate && python ../scripts/dev_bootstrap.py
 """
+import asyncio
 import os
 import sys
-import uuid
 
 import requests
 
@@ -48,14 +48,14 @@ def set_password_in_emulator(local_id: str, password: str) -> None:
     firebase_auth.update_user(local_id, password=password)
 
 
-def main():
-    connect_to_mongo()
+async def main():
+    await connect_to_mongo()
     init_firebase()
     repo = UserRepository()
 
     tokens = {}
     for spec in TEST_USERS:
-        if repo.email_exists(spec["email"]):
+        if await repo.email_exists(spec["email"]):
             print(f"Ya existe: {spec['email']} (rol {spec['role']}), lo salto")
             continue
 
@@ -68,7 +68,7 @@ def main():
             role=spec["role"],
             firebase_uid=firebase_user.uid,
         )
-        repo.collection.insert_one(user.model_dump())
+        await repo.collection.insert_one(user.model_dump())
 
         id_token = sign_in_and_get_id_token(spec["email"], TEST_PASSWORD)
         tokens[spec["role"]] = id_token
@@ -86,4 +86,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -16,7 +16,7 @@ async def generate_exam(
 ):
     """Generate a new exam with random questions from selected themes"""
     exam_service = get_exam_service()
-    exam = exam_service.generate_exam(exam_data, current_user["id"])
+    exam = await exam_service.generate_exam(exam_data, current_user["id"])
     return exam
 
 @router.get("/history")
@@ -26,7 +26,7 @@ async def get_exam_history(
 ):
     """Get user's exam history"""
     exam_service = get_exam_service()
-    history = exam_service.get_user_exam_history(current_user["id"], limit)
+    history = await exam_service.get_user_exam_history(current_user["id"], limit)
     return {"history": history, "total": len(history)}
 
 @router.get("/{exam_id}")
@@ -36,7 +36,7 @@ async def get_exam(
 ):
     """Get exam details"""
     exam_service = get_exam_service()
-    exam = exam_service.get_exam(exam_id)
+    exam = await exam_service.get_exam(exam_id)
     return exam
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
@@ -46,7 +46,7 @@ async def start_attempt(
 ):
     """Start a new exam attempt"""
     exam_service = get_exam_service()
-    attempt = exam_service.start_attempt(attempt_data.exam_id, current_user["id"])
+    attempt = await exam_service.start_attempt(attempt_data.exam_id, current_user["id"])
     return attempt
 
 @router.post("/practice/{practical_set_id}/start", status_code=status.HTTP_201_CREATED)
@@ -56,7 +56,7 @@ async def start_practice(
 ):
     """Start a practice session from a Supuesto/Cuadernillo (practical set)"""
     exam_service = get_exam_service()
-    return exam_service.start_practice(practical_set_id, current_user["id"])
+    return await exam_service.start_practice(practical_set_id, current_user["id"])
 
 @router.post("/attempts/{attempt_id}/answer")
 async def submit_answer(
@@ -66,7 +66,7 @@ async def submit_answer(
 ):
     """Submit an answer for a question in an attempt"""
     exam_service = get_exam_service()
-    result = exam_service.submit_answer(attempt_id, answer, current_user["id"])
+    result = await exam_service.submit_answer(attempt_id, answer, current_user["id"])
     return result
 
 @router.post("/attempts/{attempt_id}/finish")
@@ -76,7 +76,7 @@ async def finish_attempt(
 ):
     """Finish attempt and get results"""
     exam_service = get_exam_service()
-    result = exam_service.finish_attempt(attempt_id, current_user["id"])
+    result = await exam_service.finish_attempt(attempt_id, current_user["id"])
     return result
 
 @router.get("/attempts/{attempt_id}/results")
@@ -86,5 +86,5 @@ async def get_attempt_results(
 ):
     """Get attempt results"""
     exam_service = get_exam_service()
-    result = exam_service.get_attempt_results(attempt_id, current_user["id"])
+    result = await exam_service.get_attempt_results(attempt_id, current_user["id"])
     return result

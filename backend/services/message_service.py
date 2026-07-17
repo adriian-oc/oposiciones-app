@@ -10,7 +10,7 @@ class MessageService:
         self.message_repo = MessageRepository()
         self.user_repo = UserRepository()
 
-    def _authorize(self, current_user: dict, student_id: str) -> None:
+    async def _authorize(self, current_user: dict, student_id: str) -> None:
         """Mirror de isAssignedProfesor() en firestore.rules de ADOC: el alumno solo ve/escribe
         su propio hilo; el profesor solo el de sus alumnos asignados; el admin, cualquiera."""
         role = current_user["role"]
@@ -21,18 +21,18 @@ class MessageService:
                 raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
             return
         if role == "profesor":
-            student = self.user_repo.get_by_id(student_id)
+            student = await self.user_repo.get_by_id(student_id)
             if not student or student.get("assigned_profesor_id") != current_user["id"]:
                 raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
             return
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
 
-    def get_thread(self, student_id: str, current_user: dict) -> list:
-        self._authorize(current_user, student_id)
-        return self.message_repo.get_thread(student_id)
+    async def get_thread(self, student_id: str, current_user: dict) -> list:
+        await self._authorize(current_user, student_id)
+        return await self.message_repo.get_thread(student_id)
 
-    def send_message(self, student_id: str, data: MessageCreate, current_user: dict) -> dict:
-        self._authorize(current_user, student_id)
+    async def send_message(self, student_id: str, data: MessageCreate, current_user: dict) -> dict:
+        await self._authorize(current_user, student_id)
         message = MessageInDB(student_id=student_id, sender_id=current_user["id"], text=data.text)
-        created = self.message_repo.create(message)
+        created = await self.message_repo.create(message)
         return created.model_dump()

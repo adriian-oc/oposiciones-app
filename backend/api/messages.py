@@ -14,7 +14,7 @@ def get_message_service():
 
 @router.get("/{student_id}", response_model=List[MessageResponse])
 async def get_thread(student_id: str, current_user: dict = Depends(get_current_user)):
-    return get_message_service().get_thread(student_id, current_user)
+    return await get_message_service().get_thread(student_id, current_user)
 
 
 @router.post("/{student_id}", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
@@ -23,4 +23,4 @@ async def send_message(
     data: MessageCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    return get_message_service().send_message(student_id, data, current_user)
+    return await get_message_service().send_message(student_id, data, current_user)

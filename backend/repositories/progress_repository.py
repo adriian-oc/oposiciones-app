@@ -6,8 +6,8 @@ class ProgressRepository:
         self.db = get_database()
         self.collection = self.db.progress
 
-    def get_by_user(self, user_id: str) -> Optional[dict]:
-        return self.collection.find_one({"user_id": user_id}, {"_id": 0})
+    async def get_by_user(self, user_id: str) -> Optional[dict]:
+        return await self.collection.find_one({"user_id": user_id}, {"_id": 0})
 
-    def upsert(self, user_id: str, doc: dict) -> None:
-        self.collection.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)
+    async def upsert(self, user_id: str, doc: dict) -> None:
+        await self.collection.update_one({"user_id": user_id}, {"$set": doc}, upsert=True)

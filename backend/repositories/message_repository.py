@@ -7,11 +7,13 @@ class MessageRepository:
         self.db = get_database()
         self.collection = self.db.messages
 
-    def create(self, message: MessageInDB) -> MessageInDB:
-        self.collection.insert_one(message.model_dump())
+    async def create(self, message: MessageInDB) -> MessageInDB:
+        await self.collection.insert_one(message.model_dump())
         return message
 
-    def get_thread(self, student_id: str) -> List[dict]:
-        return list(
-            self.collection.find({"student_id": student_id}, {"_id": 0}).sort("created_at", 1)
+    async def get_thread(self, student_id: str) -> List[dict]:
+        return await (
+            self.collection.find({"student_id": student_id}, {"_id": 0})
+            .sort("created_at", 1)
+            .to_list(length=None)
         )

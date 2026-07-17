@@ -10,18 +10,18 @@ class ContentUnitRepository:
         self.db = get_database()
         self.collection = self.db.content_units
 
-    def create(self, data: ContentUnitCreate) -> ContentUnitInDB:
+    async def create(self, data: ContentUnitCreate) -> ContentUnitInDB:
         unit = ContentUnitInDB(**data.model_dump())
-        self.collection.insert_one(unit.model_dump())
+        await self.collection.insert_one(unit.model_dump())
         return unit
 
-    def bulk_create(self, units: List[ContentUnitInDB]):
+    async def bulk_create(self, units: List[ContentUnitInDB]):
         if units:
-            self.collection.insert_many([u.model_dump() for u in units])
+            await self.collection.insert_many([u.model_dump() for u in units])
             logger.info(f"Bulk created {len(units)} content units")
 
-    def get_by_area(self, area_id: str) -> List[dict]:
-        return list(self.collection.find({"area_id": area_id}, {"_id": 0}).sort("order", 1))
+    async def get_by_area(self, area_id: str) -> List[dict]:
+        return await self.collection.find({"area_id": area_id}, {"_id": 0}).sort("order", 1).to_list(length=None)
 
-    def get_one(self, area_id: str, theme_id: str) -> Optional[dict]:
-        return self.collection.find_one({"area_id": area_id, "theme_id": theme_id}, {"_id": 0})
+    async def get_one(self, area_id: str, theme_id: str) -> Optional[dict]:
+        return await self.collection.find_one({"area_id": area_id, "theme_id": theme_id}, {"_id": 0})

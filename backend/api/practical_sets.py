@@ -18,7 +18,7 @@ async def create_practical_set(
 ):
     """Create a new practical set (admin/curator only)"""
     service = get_practical_set_service()
-    practical_set = service.create_practical_set(practical_set_data, current_user["id"])
+    practical_set = await service.create_practical_set(practical_set_data, current_user["id"])
     return PracticalSetResponse(**practical_set)
 
 @router.get("/", response_model=List[PracticalSetResponse])
@@ -29,7 +29,7 @@ async def get_practical_sets(
 ):
     """Get all practical sets (summary)"""
     service = get_practical_set_service()
-    practical_sets = service.get_all_practical_sets(skip, limit)
+    practical_sets = await service.get_all_practical_sets(skip, limit)
     return [PracticalSetResponse(**ps) for ps in practical_sets]
 
 @router.get("/by-theme/{theme_id}", response_model=List[PracticalSetResponse])
@@ -39,7 +39,7 @@ async def get_practical_sets_by_theme(
 ):
     """Get practical sets by theme"""
     service = get_practical_set_service()
-    practical_sets = service.get_by_theme(theme_id)
+    practical_sets = await service.get_by_theme(theme_id)
     return [PracticalSetResponse(**ps) for ps in practical_sets]
 
 @router.get("/{practical_set_id}", response_model=PracticalSetDetailResponse)
@@ -49,7 +49,7 @@ async def get_practical_set(
 ):
     """Get practical set details with all questions"""
     service = get_practical_set_service()
-    practical_set = service.get_practical_set(practical_set_id)
+    practical_set = await service.get_practical_set(practical_set_id)
     return PracticalSetDetailResponse(**practical_set)
 
 @router.get("/random/one", response_model=PracticalSetDetailResponse)
@@ -58,7 +58,7 @@ async def get_random_practical_set(
 ):
     """Get a random practical set for exam"""
     service = get_practical_set_service()
-    practical_set = service.get_random_practical_set()
+    practical_set = await service.get_random_practical_set()
     return PracticalSetDetailResponse(**practical_set)
 
 @router.delete("/{practical_set_id}")
@@ -68,5 +68,5 @@ async def delete_practical_set(
 ):
     """Delete a practical set (admin/curator only)"""
     service = get_practical_set_service()
-    success = service.delete_practical_set(practical_set_id)
+    success = await service.delete_practical_set(practical_set_id)
     return {"message": "Practical set deleted successfully", "success": success}

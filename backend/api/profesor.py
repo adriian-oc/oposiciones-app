@@ -13,7 +13,7 @@ def get_profesor_service():
 @router.get("/students")
 async def list_my_students(current_user: dict = Depends(require_role(["profesor"]))):
     """Alumnos asignados a este profesor -- vista de solo lectura, ver ProfesorService."""
-    return get_profesor_service().list_my_students(current_user["id"])
+    return await get_profesor_service().list_my_students(current_user["id"])
 
 
 @router.get("/students/{student_id}/progress")
@@ -26,4 +26,4 @@ async def get_student_progress(
     is_admin = current_user["role"] == "admin"
     if current_user["role"] not in ("admin", "profesor"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
-    return service.get_student_progress(student_id, current_user["id"], is_admin=is_admin)
+    return await service.get_student_progress(student_id, current_user["id"], is_admin=is_admin)

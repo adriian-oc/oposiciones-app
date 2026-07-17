@@ -14,11 +14,13 @@ huerfaniza nada.
 
 Uso: cd backend && source venv/bin/activate && python ../scripts/migrate_quiz_data.py
 """
+import asyncio
 import json
 import os
 import re
 import sys
 import uuid
+from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
@@ -62,7 +64,7 @@ def convert_case(caso: dict) -> tuple[dict, list]:
     return {"title": caso["title"], "description": caso.get("desc", "")}, questions
 
 
-def build_practical_set(db, ps_id: str, title: str, description: str, theme_ids: list, casos: list):
+async def build_practical_set(db, ps_id: str, title: str, description: str, theme_ids: list, casos: list):
     all_questions = []
     cases = []
     position = 1
@@ -93,17 +95,16 @@ def build_practical_set(db, ps_id: str, title: str, description: str, theme_ids:
         "created_by": MIGRATION_USER,
         "is_active": True,
     }
-    existing = db.practical_sets.find_one({"id": ps_id})
+    existing = await db.practical_sets.find_one({"id": ps_id})
     if existing:
-        db.practical_sets.update_one({"id": ps_id}, {"$set": doc})
+        await db.practical_sets.update_one({"id": ps_id}, {"$set": doc})
     else:
-        from datetime import datetime
         doc["created_at"] = datetime.utcnow()
-        db.practical_sets.insert_one(doc)
+        await db.practical_sets.insert_one(doc)
     return len(all_questions)
 
 
-def migrate_gen(db, quiz_data: dict) -> int:
+async def migrate_gen(db, quiz_data: dict) -> int:
     """Supuestos Prácticos: agrupa los 217 casos por número de supuesto (kind:'numbered' en
     ADOC, calculado hoy en cada render vía getGenSupNums; aquí se calcula una sola vez)."""
     casos = quiz_data.get("gen", {}).get("casos", [])
@@ -118,7 +119,7 @@ def migrate_gen(db, quiz_data: dict) -> int:
     total_q = 0
     for num, sup_casos in sorted(by_supuesto.items(), key=lambda kv: int(kv[0])):
         ps_id = stable_id("gen", num)
-        n = build_practical_set(
+        n = await build_practical_set(
             db, ps_id,
             title=f"Supuesto {num}",
             description=f"Supuesto Práctico {num} ({len(sup_casos)} minisupuestos)",
@@ -130,7 +131,7 @@ def migrate_gen(db, quiz_data: dict) -> int:
     return len(by_supuesto)
 
 
-def migrate_cuadernillos(db, quiz_data: dict, theme_by_code: dict) -> tuple[int, list]:
+async def migrate_cuadernillos(db, quiz_data: dict, theme_by_code: dict) -> tuple[int, list]:
     """Cada cuad_<tema_key> ya viene pre-agrupado por tema en QUIZ_DATA; se migra 1:1 a un
     practical_set con sus propios casos, sin más agrupación necesaria."""
     migrated_tema_keys = []
@@ -147,7 +148,7 @@ def migrate_cuadernillos(db, quiz_data: dict, theme_by_code: dict) -> tuple[int,
             continue
 
         ps_id = stable_id("cuad", tema_key)
-        n = build_practical_set(
+        n = await build_practical_set(
             db, ps_id,
             title=f"Cuadernillo — {theme['name']}",
             description=f"Cuadernillo de ejercicios del tema {tema_key}",
@@ -161,8 +162,8 @@ def migrate_cuadernillos(db, quiz_data: dict, theme_by_code: dict) -> tuple[int,
     return count, migrated_tema_keys
 
 
-def seed_content_units(db, theme_by_code: dict, area_pdfs: dict, migrated_cuad_temas: list):
-    db.content_units.delete_many({})
+async def seed_content_units(db, theme_by_code: dict, area_pdfs: dict, migrated_cuad_temas: list):
+    await db.content_units.delete_many({})
     units = []
 
     # tesp: PDF descargable (AREA_PDFS)
@@ -211,12 +212,12 @@ def seed_content_units(db, theme_by_code: dict, area_pdfs: dict, migrated_cuad_t
             })
 
     if units:
-        db.content_units.insert_many(units)
+        await db.content_units.insert_many(units)
     print(f"content_units: {len(units)} unidades sembradas (pdf + próximamente)")
 
 
-def main():
-    connect_to_mongo()
+async def main():
+    await connect_to_mongo()
     db = get_database()
 
     with open(os.path.join(DATA_DIR, "quiz_data.json"), encoding="utf-8") as f:
@@ -224,19 +225,19 @@ def main():
     with open(os.path.join(DATA_DIR, "area_pdfs.json"), encoding="utf-8") as f:
         area_pdfs = json.load(f)
 
-    themes = list(db.themes.find({}, {"_id": 0}))
+    themes = await db.themes.find({}, {"_id": 0}).to_list(length=None)
     if not themes:
         print("ERROR: la colección 'themes' está vacía -- arranca el backend una vez "
               "para que se siembren los temas reales de ADOC antes de migrar preguntas.")
         sys.exit(1)
     theme_by_code = {t["code"]: t for t in themes}
 
-    db.practical_sets.delete_many({"created_by": MIGRATION_USER})
+    await db.practical_sets.delete_many({"created_by": MIGRATION_USER})
 
-    migrate_gen(db, quiz_data)
-    _, migrated_cuad_temas = migrate_cuadernillos(db, quiz_data, theme_by_code)
-    seed_content_units(db, theme_by_code, area_pdfs, migrated_cuad_temas)
+    await migrate_gen(db, quiz_data)
+    _, migrated_cuad_temas = await migrate_cuadernillos(db, quiz_data, theme_by_code)
+    await seed_content_units(db, theme_by_code, area_pdfs, migrated_cuad_temas)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

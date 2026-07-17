@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { examService } from "../services/examService";
@@ -9,11 +9,7 @@ const ExamResults = () => {
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadResults();
-  }, [attemptId]);
-
-  const loadResults = async () => {
+  const loadResults = useCallback(async () => {
     try {
       const data = await examService.getAttemptResults(attemptId);
       setAttempt(data);
@@ -23,7 +19,11 @@ const ExamResults = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [attemptId]);
+
+  useEffect(() => {
+    loadResults();
+  }, [loadResults]);
 
   if (loading) {
     return (

@@ -22,7 +22,7 @@ async def get_questions(
 ):
     """Get all questions with optional filters"""
     question_service = get_question_service()
-    questions = question_service.get_questions(theme_id, limit, skip, content_area)
+    questions = await question_service.get_questions(theme_id, limit, skip, content_area)
     return [QuestionResponse(**q) for q in questions]
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
@@ -32,7 +32,7 @@ async def create_question(
 ):
     """Create a new question (admin/curator only)"""
     question_service = get_question_service()
-    question = question_service.create_question(question_data, current_user["id"])
+    question = await question_service.create_question(question_data, current_user["id"])
     return QuestionResponse(**question)
 
 @router.get("/{question_id}", response_model=QuestionResponse)
@@ -42,7 +42,7 @@ async def get_question(
 ):
     """Get question by ID"""
     question_service = get_question_service()
-    question = question_service.get_question_by_id(question_id)
+    question = await question_service.get_question_by_id(question_id)
     return QuestionResponse(**question)
 
 @router.put("/{question_id}", response_model=QuestionResponse)
@@ -53,7 +53,7 @@ async def update_question(
 ):
     """Update a question (admin/curator only)"""
     question_service = get_question_service()
-    question = question_service.update_question(question_id, question_data, current_user["id"])
+    question = await question_service.update_question(question_id, question_data, current_user["id"])
     return QuestionResponse(**question)
 
 @router.delete("/{question_id}")
@@ -63,7 +63,7 @@ async def delete_question(
 ):
     """Delete a question (admin/curator only)"""
     question_service = get_question_service()
-    success = question_service.delete_question(question_id)
+    success = await question_service.delete_question(question_id)
     return {"message": "Question deleted successfully", "success": success}
 
 @router.post("/upload/bulk")
@@ -78,7 +78,7 @@ async def upload_bulk_questions(
         
         upload_data = ListBulkQuestionsUpload(**data)
         question_service = get_question_service()
-        result = question_service.upload_bulk_questions(upload_data.uploads, current_user["id"])
+        result = await question_service.upload_bulk_questions(upload_data.uploads, current_user["id"])
         
         return result
     except json.JSONDecodeError:

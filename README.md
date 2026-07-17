@@ -39,6 +39,18 @@ python scripts/extract_quiz_data.py   # extrae QUIZ_DATA/AREA_PDFS/CONTENT_AREAS
 python scripts/migrate_quiz_data.py   # los vuelca a Mongo (idempotente)
 ```
 
+## Tests
+
+```bash
+cd backend && source venv/bin/activate
+pytest tests/ -v
+```
+
+Corre contra una base Mongo separada (`opositores_test`, se vacía sola al empezar la sesión de
+test) y el mismo emulador de Firebase Auth del desarrollo local -- nunca toca `opositores_dev`
+ni datos reales. Cubre auth/roles, roster, el flujo de práctica y su scoring, autorización del
+chat, y la whitelist + rate limit de las solicitudes de acceso.
+
 ## Despliegue a staging (Fase 8 del plan de migración)
 
 Esto requiere crear cuentas reales -- son pasos que solo puede hacer el dueño del proyecto, no

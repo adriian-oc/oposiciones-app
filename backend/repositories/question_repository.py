@@ -2,7 +2,6 @@ from config.database import get_database
 from models.question import QuestionInDB, QuestionCreate
 from typing import List, Optional
 import logging
-import random
 
 logger = logging.getLogger(__name__)
 
@@ -10,18 +9,18 @@ class QuestionRepository:
     def __init__(self):
         self.db = get_database()
         self.collection = self.db.questions
-    
-    def create(self, question_data: QuestionCreate, created_by: str) -> QuestionInDB:
+
+    async def create(self, question_data: QuestionCreate, created_by: str) -> QuestionInDB:
         question = QuestionInDB(**question_data.model_dump(), created_by=created_by)
         question_dict = question.model_dump()
-        self.collection.insert_one(question_dict)
+        await self.collection.insert_one(question_dict)
         logger.info(f"Question created: {question.id}")
         return question
-    
-    def get_by_id(self, question_id: str) -> Optional[dict]:
-        return self.collection.find_one({"id": question_id}, {"_id": 0})
-    
-    def get_all(
+
+    async def get_by_id(self, question_id: str) -> Optional[dict]:
+        return await self.collection.find_one({"id": question_id}, {"_id": 0})
+
+    async def get_all(
         self,
         theme_id: Optional[str] = None,
         limit: int = 100,
@@ -34,48 +33,47 @@ class QuestionRepository:
         if content_area:
             query["content_area"] = content_area
 
-        questions = list(
+        return await (
             self.collection.find(query, {"_id": 0})
             .sort("created_at", -1)
             .skip(skip)
             .limit(limit)
+            .to_list(length=limit)
         )
-        return questions
-    
-    def update(self, question_id: str, question_data: dict) -> bool:
-        result = self.collection.update_one(
+
+    async def update(self, question_id: str, question_data: dict) -> bool:
+        result = await self.collection.update_one(
             {"id": question_id},
             {"$set": question_data}
         )
         return result.modified_count > 0
 
-    def append_edit_history(self, question_id: str, entry: dict) -> None:
+    async def append_edit_history(self, question_id: str, entry: dict) -> None:
         from models.question import QuestionEditHistoryEntry
-        self.collection.update_one(
+        await self.collection.update_one(
             {"id": question_id},
             {"$push": {"edit_history": QuestionEditHistoryEntry(**entry).model_dump()}},
         )
-    
-    def delete(self, question_id: str) -> bool:
-        result = self.collection.delete_one({"id": question_id})
+
+    async def delete(self, question_id: str) -> bool:
+        result = await self.collection.delete_one({"id": question_id})
         return result.deleted_count > 0
-    
-    def get_random_by_themes(self, theme_ids: List[str], count: int) -> List[dict]:
+
+    async def get_random_by_themes(self, theme_ids: List[str], count: int) -> List[dict]:
         """Get random questions from specified themes"""
         pipeline = [
             {"$match": {"theme_id": {"$in": theme_ids}}},
             {"$sample": {"size": count}},
             {"$project": {"_id": 0}}
         ]
-        questions = list(self.collection.aggregate(pipeline))
-        return questions
-    
-    def bulk_create(self, questions: List[QuestionInDB]):
+        return await self.collection.aggregate(pipeline).to_list(length=count)
+
+    async def bulk_create(self, questions: List[QuestionInDB]):
         """Bulk insert questions"""
         if questions:
             question_docs = [q.model_dump() for q in questions]
-            self.collection.insert_many(question_docs)
+            await self.collection.insert_many(question_docs)
             logger.info(f"Bulk created {len(question_docs)} questions")
-    
-    def count_by_theme(self, theme_id: str) -> int:
-        return self.collection.count_documents({"theme_id": theme_id})
+
+    async def count_by_theme(self, theme_id: str) -> int:
+        return await self.collection.count_documents({"theme_id": theme_id})

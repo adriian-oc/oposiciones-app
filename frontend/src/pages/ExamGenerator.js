@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { themeService } from '../services/themeService';
 import { examService } from '../services/examService';
-import practicalSetService from '../services/practicalSetService';
 
 const ExamGenerator = () => {
   const navigate = useNavigate();
   const [themes, setThemes] = useState([]);
-  const [practicalSets, setPracticalSets] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'THEORY_TOPIC',
@@ -24,12 +22,8 @@ const ExamGenerator = () => {
 
   const loadData = async () => {
     try {
-      const [themesData, practicalData] = await Promise.all([
-        themeService.getThemes(),
-        practicalSetService.getAll()
-      ]);
+      const themesData = await themeService.getThemes();
       setThemes(themesData);
-      setPracticalSets(practicalData);
     } catch (error) {
       console.error('Error loading data:', error);
     }

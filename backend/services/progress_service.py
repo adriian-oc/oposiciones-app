@@ -10,8 +10,8 @@ class ProgressService:
     def __init__(self):
         self.progress_repo = ProgressRepository()
 
-    def get_progress(self, user_id: str) -> dict:
-        existing = self.progress_repo.get_by_user(user_id)
+    async def get_progress(self, user_id: str) -> dict:
+        existing = await self.progress_repo.get_by_user(user_id)
         return existing or {
             "user_id": user_id,
             "content_scores": {},
@@ -19,11 +19,11 @@ class ProgressService:
             "updated_at": None,
         }
 
-    def record_practice_result(self, user_id: str, content_unit_key: str, correct: int, total: int) -> None:
+    async def record_practice_result(self, user_id: str, content_unit_key: str, correct: int, total: int) -> None:
         """Rollup de lectura rápida para 'Mi Progreso', escrito como efecto secundario de
         finish_attempt (mismo patrón que analytics_service.record_attempt_results) -- no es una
         segunda fuente de verdad, `attempts` sigue siendo el detalle completo."""
-        existing = self.progress_repo.get_by_user(user_id) or {}
+        existing = await self.progress_repo.get_by_user(user_id) or {}
         content_scores = existing.get("content_scores", {})
         pct = round((correct / total) * 100, 2) if total else 0.0
         content_scores[content_unit_key] = {
@@ -35,7 +35,7 @@ class ProgressService:
 
         streak = self._advance_streak(existing.get("streak", {}))
 
-        self.progress_repo.upsert(user_id, {
+        await self.progress_repo.upsert(user_id, {
             "user_id": user_id,
             "content_scores": content_scores,
             "streak": streak,
