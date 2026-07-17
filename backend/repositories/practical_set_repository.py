@@ -23,6 +23,7 @@ class PracticalSetRepository:
             description=practical_set_data.description,
             theme_ids=practical_set_data.theme_ids,
             questions=questions_in_db,
+            cases=practical_set_data.cases,
             created_by=created_by
         )
         

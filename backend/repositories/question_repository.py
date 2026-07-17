@@ -21,11 +21,19 @@ class QuestionRepository:
     def get_by_id(self, question_id: str) -> Optional[dict]:
         return self.collection.find_one({"id": question_id}, {"_id": 0})
     
-    def get_all(self, theme_id: Optional[str] = None, limit: int = 100, skip: int = 0) -> List[dict]:
+    def get_all(
+        self,
+        theme_id: Optional[str] = None,
+        limit: int = 100,
+        skip: int = 0,
+        content_area: Optional[str] = None,
+    ) -> List[dict]:
         query = {}
         if theme_id:
             query["theme_id"] = theme_id
-        
+        if content_area:
+            query["content_area"] = content_area
+
         questions = list(
             self.collection.find(query, {"_id": 0})
             .sort("created_at", -1)
@@ -40,6 +48,13 @@ class QuestionRepository:
             {"$set": question_data}
         )
         return result.modified_count > 0
+
+    def append_edit_history(self, question_id: str, entry: dict) -> None:
+        from models.question import QuestionEditHistoryEntry
+        self.collection.update_one(
+            {"id": question_id},
+            {"$push": {"edit_history": QuestionEditHistoryEntry(**entry).model_dump()}},
+        )
     
     def delete(self, question_id: str) -> bool:
         result = self.collection.delete_one({"id": question_id})

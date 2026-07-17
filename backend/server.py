@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
-from api import auth, themes, questions, exams, practical_sets, analytics
+from services.firebase_service import init_firebase
+from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests
 import logging
 
 # Configure logging
@@ -33,7 +34,8 @@ app.add_middleware(
 async def startup_event():
     logger.info("Starting up application...")
     connect_to_mongo()
-    
+    init_firebase()
+
     # Seed initial themes
     try:
         theme_service = ThemeService()
@@ -63,11 +65,17 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(themes.router)
 app.include_router(questions.router)
 app.include_router(exams.router)
 app.include_router(practical_sets.router)
 app.include_router(analytics.router)
+app.include_router(content_units.router)
+app.include_router(messages.router)
+app.include_router(profesor.router)
+app.include_router(progress.router)
+app.include_router(access_requests.router)
 
 if __name__ == "__main__":
     import uvicorn

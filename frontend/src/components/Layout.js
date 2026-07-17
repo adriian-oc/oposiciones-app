@@ -7,8 +7,8 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -39,16 +39,54 @@ const Layout = ({ children }) => {
                 >
                   Inicio
                 </Link>
-                <Link
-                  to="/exams/new"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    isActive('/exams')
-                      ? 'border-primary-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  Exámenes
-                </Link>
+                {user?.role !== 'profesor' && (
+                  <>
+                    <Link
+                      to="/exams/new"
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive('/exams')
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
+                    >
+                      Exámenes
+                    </Link>
+                    <Link
+                      to="/practice"
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        isActive('/practice')
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
+                    >
+                      Práctica
+                    </Link>
+                  </>
+                )}
+                {user?.role === 'student' && (
+                  <Link
+                    to="/chat"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive('/chat')
+                        ? 'border-primary-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    💬 Mi profesor
+                  </Link>
+                )}
+                {user?.role === 'profesor' && (
+                  <Link
+                    to="/profesor"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive('/profesor')
+                        ? 'border-primary-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    Mis Alumnos
+                  </Link>
+                )}
                 {(user?.role === 'admin' || user?.role === 'curator') && (
                   <Link
                     to="/admin"

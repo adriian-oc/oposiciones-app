@@ -40,8 +40,14 @@ class QuestionService:
         question = self.question_repo.create(question_data, user_id)
         return question.model_dump()
     
-    def get_questions(self, theme_id: Optional[str] = None, limit: int = 100, skip: int = 0) -> List[dict]:
-        return self.question_repo.get_all(theme_id, limit, skip)
+    def get_questions(
+        self,
+        theme_id: Optional[str] = None,
+        limit: int = 100,
+        skip: int = 0,
+        content_area: Optional[str] = None,
+    ) -> List[dict]:
+        return self.question_repo.get_all(theme_id, limit, skip, content_area)
     
     def get_question_by_id(self, question_id: str) -> dict:
         question = self.question_repo.get_by_id(question_id)
@@ -52,14 +58,14 @@ class QuestionService:
             )
         return question
     
-    def update_question(self, question_id: str, question_data: dict) -> dict:
+    def update_question(self, question_id: str, question_data: dict, edited_by: str) -> dict:
         existing = self.question_repo.get_by_id(question_id)
         if not existing:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Question not found"
             )
-        
+
         # Validate if updating choices/correct_answer
         if "choices" in question_data and "correct_answer" in question_data:
             if question_data["correct_answer"] >= len(question_data["choices"]):
@@ -67,14 +73,24 @@ class QuestionService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid correct_answer index"
                 )
-        
+
+        # Sustituye al overlay questionOverrides de ADOC: guarda el estado previo antes de
+        # aplicar el cambio, en vez de un doc de corrección aparte referenciado por hash de texto.
+        if any(field in question_data for field in ("text", "choices", "correct_answer")):
+            self.question_repo.append_edit_history(question_id, {
+                "text": existing["text"],
+                "choices": existing["choices"],
+                "correct_answer": existing["correct_answer"],
+                "edited_by": edited_by,
+            })
+
         success = self.question_repo.update(question_id, question_data)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update question"
             )
-        
+
         return self.question_repo.get_by_id(question_id)
     
     def delete_question(self, question_id: str) -> bool:

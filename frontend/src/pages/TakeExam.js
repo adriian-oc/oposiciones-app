@@ -98,6 +98,20 @@ const TakeExam = () => {
   const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
 
+  // question_positions en `cases` son 1-based y siguen el mismo orden que exam.questions.
+  const currentCase = exam.cases?.find((c) =>
+    c.question_positions.includes(currentQuestionIndex + 1)
+  );
+
+  const caseStateClass = (c) => {
+    const answeredInCase = c.question_positions.filter(
+      (pos) => answers[exam.questions[pos - 1]?.question_id] !== undefined
+    ).length;
+    if (answeredInCase === 0) return 'bg-gray-100 text-gray-600 border border-gray-300';
+    if (answeredInCase < c.question_positions.length) return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+    return 'bg-green-100 text-green-800 border border-green-300';
+  };
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
@@ -119,6 +133,38 @@ const TakeExam = () => {
             />
           </div>
         </div>
+
+        {/* Puntos de navegación por caso/minisupuesto (solo en modo práctica) */}
+        {exam.cases && exam.cases.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-testid="case-dots">
+            <div className="text-sm text-gray-600 mb-2">Casos de este supuesto/cuadernillo:</div>
+            <div className="flex flex-wrap gap-2">
+              {exam.cases.map((c) => (
+                <button
+                  key={c.position}
+                  onClick={() => handleJumpToQuestion(c.question_positions[0] - 1)}
+                  title={c.title}
+                  className={`w-9 h-9 rounded-full text-sm font-medium ${
+                    currentCase?.position === c.position
+                      ? 'ring-2 ring-primary-500 ' + caseStateClass(c)
+                      : caseStateClass(c)
+                  }`}
+                  data-testid={`case-dot-${c.position}`}
+                >
+                  {c.position}
+                </button>
+              ))}
+            </div>
+            {currentCase && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-800">{currentCase.title}</h3>
+                {currentCase.description && (
+                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{currentCase.description}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Question */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-testid="question-card">

@@ -1,7 +1,8 @@
 from repositories.exam_repository import ExamRepository
 from repositories.question_repository import QuestionRepository
+from repositories.practical_set_repository import PracticalSetRepository
 from models.exam import (
-    ExamCreate, ExamInDB, QuestionSnapshot, 
+    ExamCreate, ExamInDB, QuestionSnapshot,
     AttemptStart, AttemptInDB, AnswerSubmit
 )
 from typing import List, Dict, Any, Optional
@@ -19,10 +20,61 @@ class ExamService:
     def __init__(self):
         self.exam_repo = ExamRepository()
         self.question_repo = QuestionRepository()
+        self.practical_set_repo = PracticalSetRepository()
         # Import here to avoid circular dependency
         from services.analytics_service import AnalyticsService
+        from services.progress_service import ProgressService
         self.analytics_service = AnalyticsService()
-    
+        self.progress_service = ProgressService()
+
+    def start_practice(self, practical_set_id: str, user_id: str) -> dict:
+        """Practica suelta de un Supuesto/Cuadernillo (practical_set): construye un 'examen' de
+        un solo uso a partir de sus preguntas y arranca el intento en el mismo acto, reutilizando
+        íntegro el motor de exámenes existente (submit_answer/finish_attempt/results) en vez de
+        montar un segundo stack de scoring -- ver decisión de diseño en el plan de migración."""
+        practical_set = self.practical_set_repo.get_by_id(practical_set_id)
+        if not practical_set:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Practical set not found")
+
+        theme_id = practical_set["theme_ids"][0] if practical_set["theme_ids"] else ""
+        question_snapshots = [
+            QuestionSnapshot(
+                question_id=q["id"],
+                text=q["text"],
+                choices=q["choices"],
+                correct_answer=q["correct_answer"],
+                theme_id=theme_id,
+            )
+            for q in practical_set["questions"]
+        ]
+
+        exam = ExamInDB(
+            type="PRACTICAL",
+            name=practical_set["title"],
+            theme_ids=practical_set["theme_ids"],
+            questions=question_snapshots,
+            created_by=user_id,
+            mode="practice",
+            content_unit_key=practical_set["id"],
+            cases=practical_set.get("cases"),
+        )
+        created_exam = self.exam_repo.create_exam(exam)
+
+        attempt = AttemptInDB(
+            exam_id=created_exam.id,
+            user_id=user_id,
+            mode="practice",
+            content_unit_key=practical_set["id"],
+        )
+        created_attempt = self.exam_repo.create_attempt(attempt)
+
+        return {
+            "id": created_attempt.id,
+            "exam_id": created_attempt.exam_id,
+            "started_at": created_attempt.started_at,
+            "exam": created_exam.model_dump(),
+        }
+
     def generate_exam(self, exam_data: ExamCreate, user_id: str) -> dict:
         """Generate an exam by selecting random questions from specified themes"""
         
@@ -267,7 +319,21 @@ class ExamService:
         except Exception as e:
             logger.error(f"Failed to record analytics: {e}")
             # Don't fail the attempt if analytics fails
-        
+
+        # Rollup de progreso (racha + score por content_unit) solo para prácticas sueltas de
+        # Supuestos/Cuadernillos -- ADOC no trackea progreso sobre exámenes de teoría generados
+        # a medida, así que replicamos ese mismo alcance en vez de inventar uno nuevo.
+        if attempt.get("mode") == "practice" and attempt.get("content_unit_key"):
+            try:
+                self.progress_service.record_practice_result(
+                    user_id=user_id,
+                    content_unit_key=attempt["content_unit_key"],
+                    correct=score_result["correct"],
+                    total=score_result["total_questions"],
+                )
+            except Exception as e:
+                logger.error(f"Failed to record progress rollup: {e}")
+
         return {
             "attempt_id": attempt_id,
             "score": score_result["final_score"],

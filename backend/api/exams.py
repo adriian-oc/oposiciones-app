@@ -49,6 +49,15 @@ async def start_attempt(
     attempt = exam_service.start_attempt(attempt_data.exam_id, current_user["id"])
     return attempt
 
+@router.post("/practice/{practical_set_id}/start", status_code=status.HTTP_201_CREATED)
+async def start_practice(
+    practical_set_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Start a practice session from a Supuesto/Cuadernillo (practical set)"""
+    exam_service = get_exam_service()
+    return exam_service.start_practice(practical_set_id, current_user["id"])
+
 @router.post("/attempts/{attempt_id}/answer")
 async def submit_answer(
     attempt_id: str,

@@ -1,9 +1,7 @@
 import axios from 'axios';
+import { auth } from '../firebase';
 
-// Use HTTPS URL directly to avoid Mixed Content errors
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
-console.log('🔧 API_BASE_URL configured as:', API_BASE_URL);
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -12,28 +10,24 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
+// El SDK de Firebase refresca el ID token automáticamente (expira cada hora) -- pedirlo aquí
+// en cada request, en vez de leer uno guardado, evita mandar un token caducado.
 api.interceptors.request.use(
-  (config) => {
-    console.log('🚀 Making request to:', config.baseURL + config.url);
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const idToken = await currentUser.getIdToken();
+      config.headers.Authorization = `Bearer ${idToken}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Handle response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);

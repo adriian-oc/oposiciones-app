@@ -1,4 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -8,11 +10,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = authService.getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setLoading(false);
+    // Fuente de verdad de la sesión = Firebase Auth. Cuando cambia (login, logout, o al
+    // recargar la página con una sesión persistida), volvemos a pedir el roster de Mongo.
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+        } catch (err) {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
   const login = async (credentials) => {
@@ -21,20 +34,14 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const register = async (userData) => {
-    const newUser = await authService.register(userData);
-    return newUser;
-  };
-
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
   };
 
   const value = {
     user,
     login,
-    register,
     logout,
     isAuthenticated: !!user,
     loading,

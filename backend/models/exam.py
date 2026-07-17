@@ -24,6 +24,14 @@ class ExamInDB(BaseModel):
     questions: List[QuestionSnapshot]  # Snapshot of questions
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Sesiones de práctica sueltas por tema/caso (Supuestos, Cuadernillos) se modelan como un
+    # "examen" más en vez de un stack de scoring/analytics aparte -- mode distingue de un examen
+    # formal generado por ExamGenerator; content_unit_key apunta al practical_set de origen;
+    # cases se denormaliza aquí (en vez de recalcularse) para que el frontend pinte los puntos
+    # de navegación por caso sin tener que volver a pedir el practical_set.
+    mode: str = "exam"  # "exam" | "practice"
+    content_unit_key: Optional[str] = None
+    cases: Optional[List[dict]] = None
 
 class ExamResponse(BaseModel):
     id: str
@@ -33,6 +41,9 @@ class ExamResponse(BaseModel):
     question_count: int
     created_by: str
     created_at: datetime
+    mode: str = "exam"
+    content_unit_key: Optional[str] = None
+    cases: Optional[List[dict]] = None
 
 # Attempts
 class AnswerSubmit(BaseModel):
@@ -51,6 +62,10 @@ class AttemptInDB(BaseModel):
     finished_at: Optional[datetime] = None
     score: Optional[float] = None
     details: Optional[Dict[str, Any]] = None
+    # Denormalizado del exam de origen para poder consultar attempts por content_unit_key
+    # directamente (rollup de progreso, Fase 6) sin tener que unir contra `exams` cada vez.
+    mode: str = "exam"
+    content_unit_key: Optional[str] = None
 
 class AttemptResponse(BaseModel):
     id: str

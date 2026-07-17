@@ -3,14 +3,17 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import analyticsService from '../services/analyticsService';
+import { progressService } from '../services/progressService';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    loadProgress();
   }, []);
 
   const loadStats = async () => {
@@ -21,6 +24,15 @@ const Dashboard = () => {
       console.error('Error loading stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProgress = async () => {
+    try {
+      const data = await progressService.getMyProgress();
+      setProgress(data);
+    } catch (error) {
+      console.error('Error loading progress:', error);
     }
   };
 
@@ -35,6 +47,18 @@ const Dashboard = () => {
             Comienza a practicar con exámenes personalizados
           </p>
         </div>
+
+        {progress?.streak?.count > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center gap-3">
+            <span className="text-2xl">🔥</span>
+            <div>
+              <span className="font-semibold text-orange-800">
+                {progress.streak.count} día{progress.streak.count === 1 ? '' : 's'} seguidos
+              </span>
+              <span className="text-sm text-orange-600 ml-2">¡Sigue así!</span>
+            </div>
+          </div>
+        )}
 
         {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
+
+const FIREBASE_ERROR_MESSAGES = {
+  'auth/invalid-credential': 'Correo o contraseña incorrectos',
+  'auth/invalid-email': 'Correo electrónico no válido',
+  'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+  'auth/too-many-requests': 'Demasiados intentos. Inténtalo más tarde',
+};
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -13,15 +22,30 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
 
     try {
       await login({ email, password });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión');
+      setError(FIREBASE_ERROR_MESSAGES[err.code] || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Escribe tu correo electrónico y pulsa de nuevo');
+      return;
+    }
+    setError('');
+    try {
+      await authService.sendPasswordReset(email);
+      setInfo('Te hemos enviado un correo para restablecer tu contraseña');
+    } catch (err) {
+      setError(FIREBASE_ERROR_MESSAGES[err.code] || 'No se pudo enviar el correo de restablecimiento');
     }
   };
 
@@ -41,6 +65,11 @@ const Login = () => {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded relative" role="alert" data-testid="error-message">
                 <span className="block sm:inline">{error}</span>
+              </div>
+            )}
+            {info && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded relative" role="status">
+                <span className="block sm:inline">{info}</span>
               </div>
             )}
             <div>
@@ -86,9 +115,17 @@ const Login = () => {
               </button>
             </div>
           </form>
-          <div className="mt-4 text-center">
-            <Link to="/register" className="text-sm text-primary-600 hover:text-primary-500" data-testid="register-link">
-              ¿No tienes cuenta? Regístrate
+          <div className="mt-4 text-center space-y-2">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="block w-full text-sm text-primary-600 hover:text-primary-500"
+              data-testid="forgot-password-link"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+            <Link to="/solicitar-acceso" className="block text-sm text-gray-500 hover:text-gray-700">
+              ¿Todavía no tienes cuenta? Solicita acceso
             </Link>
           </div>
         </div>

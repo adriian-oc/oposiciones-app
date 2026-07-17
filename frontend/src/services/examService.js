@@ -16,6 +16,11 @@ export const examService = {
     return response.data;
   },
 
+  async startPractice(practicalSetId) {
+    const response = await api.post(`/api/exams/practice/${practicalSetId}/start`);
+    return response.data;
+  },
+
   async submitAnswer(attemptId, questionId, selectedAnswer) {
     const response = await api.post(`/api/exams/attempts/${attemptId}/answer`, {
       question_id: questionId,

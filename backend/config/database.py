@@ -19,6 +19,7 @@ def connect_to_mongo():
         
         # Create indexes
         Database.db.users.create_index([("email", ASCENDING)], unique=True)
+        Database.db.users.create_index([("firebase_uid", ASCENDING)], unique=True)
         Database.db.themes.create_index([("code", ASCENDING)], unique=True)
         Database.db.questions.create_index([("theme_id", ASCENDING)])
         Database.db.questions.create_index([("created_at", DESCENDING)])
@@ -30,7 +31,15 @@ def connect_to_mongo():
         Database.db.analytics_failures.create_index([("theme_id", ASCENDING)])
         Database.db.analytics_failures.create_index([("failed_at", DESCENDING)])
         Database.db.user_theme_stats.create_index([("user_id", ASCENDING), ("theme_id", ASCENDING)], unique=True)
-        
+        Database.db.content_units.create_index([("area_id", ASCENDING), ("theme_id", ASCENDING)])
+        Database.db.questions.create_index([("content_area", ASCENDING)])
+        Database.db.messages.create_index([("student_id", ASCENDING), ("created_at", ASCENDING)])
+        Database.db.users.create_index([("assigned_profesor_id", ASCENDING)])
+        Database.db.progress.create_index([("user_id", ASCENDING)], unique=True)
+        Database.db.attempts.create_index([("content_unit_key", ASCENDING)])
+        Database.db.access_requests.create_index([("status", ASCENDING)])
+        Database.db.access_requests.create_index([("created_at", DESCENDING)])
+
         logger.info("Connected to MongoDB successfully")
     except Exception as e:
         logger.error(f"Error connecting to MongoDB: {e}")

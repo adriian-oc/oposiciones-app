@@ -15,13 +15,14 @@ def get_question_service():
 @router.get("/", response_model=List[QuestionResponse])
 async def get_questions(
     theme_id: Optional[str] = Query(None, description="Filter by theme ID"),
+    content_area: Optional[str] = Query(None, description="Filter by content area (cuad, ttesp, ttgen...)"),
     limit: int = Query(100, ge=1, le=500),
     skip: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """Get all questions with optional filters"""
     question_service = get_question_service()
-    questions = question_service.get_questions(theme_id, limit, skip)
+    questions = question_service.get_questions(theme_id, limit, skip, content_area)
     return [QuestionResponse(**q) for q in questions]
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
@@ -52,7 +53,7 @@ async def update_question(
 ):
     """Update a question (admin/curator only)"""
     question_service = get_question_service()
-    question = question_service.update_question(question_id, question_data)
+    question = question_service.update_question(question_id, question_data, current_user["id"])
     return QuestionResponse(**question)
 
 @router.delete("/{question_id}")
