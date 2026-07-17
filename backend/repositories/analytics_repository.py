@@ -122,6 +122,43 @@ class AnalyticsRepository:
             .to_list(length=limit)
         )
 
+    async def get_top_failed_questions(
+        self,
+        theme_id: Optional[str] = None,
+        user_ids: Optional[List[str]] = None,
+        limit: int = 20,
+    ) -> List[Dict]:
+        """Agrega analytics_failures por question_id -- base del panel de refuerzo de staff.
+        user_ids=None significa 'todos los alumnos' (vista de admin); una lista concreta scopea
+        a los alumnos asignados de un profesor."""
+        match: Dict = {}
+        if theme_id:
+            match["theme_id"] = theme_id
+        if user_ids is not None:
+            match["user_id"] = {"$in": user_ids}
+
+        pipeline = []
+        if match:
+            pipeline.append({"$match": match})
+        pipeline += [
+            {
+                "$group": {
+                    "_id": "$question_id",
+                    "question_text": {"$first": "$question_text"},
+                    "choices": {"$first": "$choices"},
+                    "correct_answer": {"$first": "$correct_answer"},
+                    "theme_id": {"$first": "$theme_id"},
+                    "failure_count": {"$sum": 1},
+                    "distinct_students": {"$addToSet": "$user_id"},
+                    "last_failed_at": {"$max": "$failed_at"},
+                }
+            },
+            {"$addFields": {"distinct_students": {"$size": "$distinct_students"}}},
+            {"$sort": {"failure_count": -1}},
+            {"$limit": limit},
+        ]
+        return await self.failures_collection.aggregate(pipeline).to_list(length=limit)
+
     async def get_overall_stats(self, user_id: str) -> Dict:
         """Get overall statistics for a user"""
         pipeline = [

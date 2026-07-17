@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics';
 import ProfesorDashboard from './pages/ProfesorDashboard';
 import Chat from './pages/Chat';
 import AccessRequest from './pages/AccessRequest';
+import StudyCalendar from './pages/StudyCalendar';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -126,6 +127,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute allowedRoles={['student']}>
             <Chat />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/calendario"
+        element={
+          <PrivateRoute allowedRoles={['student']}>
+            <StudyCalendar />
           </PrivateRoute>
         }
       />

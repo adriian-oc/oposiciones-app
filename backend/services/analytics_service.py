@@ -1,9 +1,10 @@
 from repositories.analytics_repository import AnalyticsRepository
 from repositories.theme_repository import ThemeRepository
 from repositories.exam_repository import ExamRepository
+from repositories.user_repository import UserRepository
 from models.analytics import (
     FailureRecord, FailureAnalytics, StudyPlanItem,
-    StudyPlanResponse, OverallStats
+    StudyPlanResponse, OverallStats, TopFailedQuestion
 )
 from typing import List, Optional
 from fastapi import HTTPException, status
@@ -16,6 +17,7 @@ class AnalyticsService:
         self.analytics_repo = AnalyticsRepository()
         self.theme_repo = ThemeRepository()
         self.exam_repo = ExamRepository()
+        self.user_repo = UserRepository()
 
     async def record_attempt_results(self, attempt_id: str, user_id: str, results: List[dict]) -> None:
         """Process attempt results and record failures and stats"""
@@ -23,8 +25,11 @@ class AnalyticsService:
         theme_stats = {}
 
         for result in results:
+            # theme_id == "" es válido para Supuestos Prácticos (kind:'numbered', no ligados a
+            # un tema SPECIFIC/GENERAL) -- solo se descarta si falta de verdad (None), si no,
+            # sus fallos nunca aparecerían en el panel de refuerzo de preguntas más falladas.
             theme_id = result.get("theme_id")
-            if not theme_id:
+            if theme_id is None:
                 continue
 
             if theme_id not in theme_stats:
@@ -39,6 +44,8 @@ class AnalyticsService:
                 failure = FailureRecord(
                     user_id=user_id,
                     question_id=result["question_id"],
+                    question_text=result.get("question_text", ""),
+                    choices=result.get("choices", []),
                     theme_id=theme_id,
                     attempt_id=attempt_id,
                     selected_answer=result.get("selected_answer"),
@@ -140,6 +147,43 @@ class AnalyticsService:
             weak_themes=study_items,
             total_weak_areas=len(study_items)
         )
+
+    async def get_top_failed_questions_for_staff(
+        self, staff_user: dict, theme_id: Optional[str] = None, limit: int = 20
+    ) -> List[TopFailedQuestion]:
+        """Panel de refuerzo: preguntas con más fallos. admin ve de todos los alumnos; profesor
+        solo de sus alumnos asignados -- mismo criterio de alcance que 'Mis Alumnos' (Fase 5)."""
+        user_ids = None
+        if staff_user["role"] == "profesor":
+            assigned = await self.user_repo.list_by_assigned_profesor(staff_user["id"])
+            user_ids = [u["id"] for u in assigned]
+            if not user_ids:
+                return []
+        elif staff_user["role"] != "admin":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+
+        rows = await self.analytics_repo.get_top_failed_questions(theme_id, user_ids, limit)
+
+        theme_cache: dict = {}
+        results = []
+        for row in rows:
+            t_id = row["theme_id"]
+            if t_id not in theme_cache:
+                theme_cache[t_id] = await self.theme_repo.get_by_id(t_id)
+            theme = theme_cache[t_id]
+            results.append(TopFailedQuestion(
+                question_id=row["_id"],
+                question_text=row["question_text"],
+                choices=row["choices"],
+                correct_answer=row["correct_answer"],
+                theme_id=t_id,
+                theme_name=theme["name"] if theme else "Sin tema (Supuesto Práctico)",
+                theme_code=theme["code"] if theme else "-",
+                failure_count=row["failure_count"],
+                distinct_students=row["distinct_students"],
+                last_failed_at=row.get("last_failed_at"),
+            ))
+        return results
 
     async def get_overall_stats(self, user_id: str) -> OverallStats:
         """Get overall statistics for a user"""

@@ -7,7 +7,7 @@ from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
 from services.firebase_service import init_firebase
 from utils.rate_limit import limiter
-from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests
+from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests, study_calendar
 import logging
 
 # Configure logging
@@ -82,6 +82,7 @@ app.include_router(messages.router)
 app.include_router(profesor.router)
 app.include_router(progress.router)
 app.include_router(access_requests.router)
+app.include_router(study_calendar.router)
 
 if __name__ == "__main__":
     import uvicorn

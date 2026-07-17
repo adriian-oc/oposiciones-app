@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import QuestionUpload from '../components/QuestionUpload';
 import RosterTable from '../components/RosterTable';
+import TopFailuresPanel from '../components/TopFailuresPanel';
 import { themeService } from '../services/themeService';
 import { questionService } from '../services/questionService';
 import { adminService } from '../services/adminService';
@@ -9,7 +10,7 @@ import { accessRequestService } from '../services/accessRequestService';
 import { openGmailCompose } from '../utils/gmailCompose';
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'questions', 'themes', 'roster', 'requests'
+  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'questions', 'themes', 'roster', 'requests', 'failures'
   const [themes, setThemes] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState('');
@@ -276,6 +277,17 @@ const Admin = () => {
                   {accessRequests.filter((r) => r.status === 'pending').length}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('failures')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'failures'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              data-testid="tab-failures"
+            >
+              Refuerzo
             </button>
           </nav>
         </div>
@@ -624,6 +636,8 @@ const Admin = () => {
             )}
           </div>
         )}
+
+        {activeTab === 'failures' && <TopFailuresPanel />}
       </div>
 
       {editingUser && (

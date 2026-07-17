@@ -4,10 +4,17 @@ from datetime import datetime
 import uuid
 
 class FailureRecord(BaseModel):
-    """Record of a failed question answer"""
+    """Record of a failed question answer.
+
+    question_text/choices se denormalizan aquí (en vez de resolverse por question_id al leer)
+    porque muchas preguntas viven embebidas dentro de practical_sets (Supuestos/Cuadernillos),
+    no en la colección `questions` -- guardar el texto tal cual se mostró evita tener que buscar
+    en dos sitios distintos al construir el panel de fallos más comunes."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     question_id: str
+    question_text: str = ""
+    choices: List[str] = Field(default_factory=list)
     theme_id: str
     attempt_id: str
     failed_at: datetime = Field(default_factory=datetime.utcnow)
@@ -51,6 +58,20 @@ class StudyPlanResponse(BaseModel):
     generated_at: datetime = Field(default_factory=datetime.utcnow)
     weak_themes: List[StudyPlanItem]
     total_weak_areas: int
+
+class TopFailedQuestion(BaseModel):
+    """Una fila del panel de refuerzo de staff: una pregunta y cuántas veces (y por cuántos
+    alumnos distintos) se ha fallado."""
+    question_id: str
+    question_text: str
+    choices: List[str]
+    correct_answer: int
+    theme_id: str
+    theme_name: str
+    theme_code: str
+    failure_count: int
+    distinct_students: int
+    last_failed_at: Optional[datetime]
 
 class OverallStats(BaseModel):
     """Overall statistics for a user"""

@@ -24,8 +24,10 @@ class ExamService:
         # Import here to avoid circular dependency
         from services.analytics_service import AnalyticsService
         from services.progress_service import ProgressService
+        from services.study_calendar_service import StudyCalendarService
         self.analytics_service = AnalyticsService()
         self.progress_service = ProgressService()
+        self.study_calendar_service = StudyCalendarService()
 
     async def start_practice(self, practical_set_id: str, user_id: str) -> dict:
         """Practica suelta de un Supuesto/Cuadernillo (practical_set): construye un 'examen' de
@@ -333,6 +335,14 @@ class ExamService:
                 )
             except Exception as e:
                 logger.error(f"Failed to record progress rollup: {e}")
+
+            # El calendario de estudio 'se actualiza automático' según cambian los fallos
+            # reales del alumno -- regenerar solo si ya configuró horas disponibles (si no,
+            # no hay nada que generar; ver StudyCalendarService.regenerate_calendar).
+            try:
+                await self.study_calendar_service.regenerate_calendar(user_id)
+            except Exception as e:
+                logger.error(f"Failed to regenerate study calendar: {e}")
 
         return {
             "attempt_id": attempt_id,

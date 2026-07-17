@@ -24,6 +24,7 @@ const Layout = ({ children }) => {
     { to: '/', label: 'Inicio', show: true, exact: true },
     { to: '/exams/new', label: 'Exámenes', show: user?.role !== 'profesor' },
     { to: '/practice', label: 'Práctica', show: user?.role !== 'profesor' },
+    { to: '/calendario', label: '📅 Calendario', show: user?.role === 'student' },
     { to: '/chat', label: '💬 Mi profesor', show: user?.role === 'student' },
     { to: '/profesor', label: 'Mis Alumnos', show: user?.role === 'profesor' },
     { to: '/admin', label: 'Administración', show: user?.role === 'admin' || user?.role === 'curator' },

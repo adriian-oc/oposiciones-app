@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from typing import List, Optional
-from models.analytics import FailureAnalytics, StudyPlanResponse, OverallStats
+from models.analytics import FailureAnalytics, StudyPlanResponse, OverallStats, TopFailedQuestion
 from services.analytics_service import AnalyticsService
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -30,6 +30,17 @@ async def generate_study_plan(
     service = get_analytics_service()
     study_plan = await service.generate_study_plan(current_user["id"], threshold, max_themes)
     return study_plan
+
+@router.get("/top-failures", response_model=List[TopFailedQuestion])
+async def get_top_failed_questions(
+    theme_id: Optional[str] = Query(None, description="Filter by theme ID"),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
+):
+    """Panel de refuerzo: preguntas más falladas. admin ve de todos los alumnos, profesor solo
+    de los suyos asignados (scope resuelto dentro del servicio)."""
+    service = get_analytics_service()
+    return await service.get_top_failed_questions_for_staff(current_user, theme_id, limit)
 
 @router.get("/overall-stats", response_model=OverallStats)
 async def get_overall_stats(

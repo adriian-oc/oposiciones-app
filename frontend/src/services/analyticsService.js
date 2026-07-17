@@ -35,6 +35,19 @@ const analyticsService = {
     } catch (error) {
       throw error.response?.data || error;
     }
+  },
+
+  // Panel de refuerzo (admin/profesor): preguntas más falladas
+  getTopFailedQuestions: async (themeId = null, limit = 20) => {
+    try {
+      const params = new URLSearchParams();
+      if (themeId) params.append('theme_id', themeId);
+      params.append('limit', limit);
+      const response = await api.get(`/api/analytics/top-failures?${params}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
   }
 };
 

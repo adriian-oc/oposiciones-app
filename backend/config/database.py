@@ -39,6 +39,9 @@ async def connect_to_mongo():
         await Database.db.attempts.create_index([("content_unit_key", ASCENDING)])
         await Database.db.access_requests.create_index([("status", ASCENDING)])
         await Database.db.access_requests.create_index([("created_at", DESCENDING)])
+        await Database.db.study_preferences.create_index([("user_id", ASCENDING)], unique=True)
+        await Database.db.study_calendar.create_index([("user_id", ASCENDING), ("date", ASCENDING)])
+        await Database.db.study_calendar.create_index([("id", ASCENDING)], unique=True)
 
         logger.info("Connected to MongoDB successfully")
     except Exception as e:
