@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     # comparte manualmente con el usuario.
     frontend_base_url: str = "http://localhost:3000"
 
+    # Avisos por email de mensajes nuevos (ver services/email_service.py). Sin API key, el envío
+    # se omite silenciosamente -- no bloquea el flujo de mensajería en local/desarrollo.
+    brevo_api_key: str = ""
+    brevo_sender_email: str = "adrian.oliva.carceles@gmail.com"
+    brevo_sender_name: str = "ADOC"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

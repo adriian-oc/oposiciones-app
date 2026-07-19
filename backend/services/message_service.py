@@ -1,14 +1,20 @@
+import logging
+
 from fastapi import HTTPException, status
 
 from models.message import MessageCreate, MessageInDB
 from repositories.message_repository import MessageRepository
 from repositories.user_repository import UserRepository
+from services.email_service import EmailService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageService:
     def __init__(self):
         self.message_repo = MessageRepository()
         self.user_repo = UserRepository()
+        self.email_service = EmailService()
 
     async def _authorize(self, current_user: dict, student_id: str) -> None:
         """El alumno solo ve/escribe su propio hilo; el profesor solo el de sus alumnos
@@ -35,4 +41,20 @@ class MessageService:
         await self._authorize(current_user, student_id)
         message = MessageInDB(student_id=student_id, sender_id=current_user["id"], text=data.text)
         created = await self.message_repo.create(message)
+
+        # Aviso por email solo cuando escribe staff (profesor/admin) al alumno -- si el alumno
+        # escribe a su profesor, no hay bandeja de entrada de staff que avisar por email todavía.
+        # Best-effort: un fallo de envío no debe tumbar el guardado del mensaje.
+        if current_user["role"] in ("admin", "profesor"):
+            try:
+                student = await self.user_repo.get_by_id(student_id)
+                if student and student.get("email"):
+                    self.email_service.send_new_message_notice(
+                        to_email=student["email"],
+                        to_name=student.get("display_name") or student["email"],
+                        sender_name=current_user.get("display_name") or "tu profesor",
+                    )
+            except Exception as e:
+                logger.error(f"Fallo al avisar por email del mensaje nuevo a {student_id}: {e}")
+
         return created.model_dump()
