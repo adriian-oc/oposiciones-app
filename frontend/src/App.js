@@ -22,6 +22,7 @@ import TeacherApplication from './pages/TeacherApplication';
 import ResetPassword from './pages/ResetPassword';
 import StudyCalendar from './pages/StudyCalendar';
 import MiPerfil from './pages/MiPerfil';
+import FocusMode from './pages/FocusMode';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -172,6 +173,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <MiPerfil />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/modo-foco"
+        element={
+          <PrivateRoute allowedRoles={['student']}>
+            <FocusMode />
           </PrivateRoute>
         }
       />
