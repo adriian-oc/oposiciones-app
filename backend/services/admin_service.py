@@ -9,6 +9,7 @@ from models.user import UserCreate, UserInDB, UserUpdate
 from repositories.user_repository import UserRepository
 from repositories.progress_repository import ProgressRepository
 from services.auth_service import hash_password, generate_reset_token, reset_token_expiry
+from services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class AdminService:
     def __init__(self):
         self.user_repo = UserRepository()
         self.progress_repo = ProgressRepository()
+        self.email_service = EmailService()
 
     async def list_students(self, viewer_staff_id: str = None):
         from services.progress_service import ProgressService
@@ -68,17 +70,28 @@ class AdminService:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
 
         placeholder_hash = hash_password(secrets.token_urlsafe(24))
-        return await self.user_repo.create_with_password(user_data, placeholder_hash)
+        user = await self.user_repo.create_with_password(user_data, placeholder_hash)
+        await self._send_reset_link(user.id, user.email, user.display_name, is_new_account=True)
+        return user
 
     async def send_password_reset(self, user_id: str) -> str:
-        """Genera un enlace de restablecimiento de un solo uso (24h) -- nunca se ve/gestiona
-        una contraseña en claro, ni siquiera el admin la ve."""
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        return await self._send_reset_link(user["id"], user["email"], user.get("display_name"), is_new_account=False)
+
+    async def _send_reset_link(self, user_id: str, email: str, display_name: str, is_new_account: bool) -> str:
+        """Genera un enlace de restablecimiento de un solo uso (24h) y lo manda por email --
+        nunca se ve/gestiona una contraseña en claro, ni siquiera el admin la ve. El link
+        también se devuelve para que el admin lo pueda copiar a mano como respaldo."""
         token, token_hash = generate_reset_token()
         await self.user_repo.set_reset_token(user_id, token_hash, reset_token_expiry())
-        return f"{settings.frontend_base_url}/reset-password?token={token}"
+        link = f"{settings.frontend_base_url}/reset-password?token={token}"
+        if is_new_account:
+            self.email_service.send_welcome_email(email, display_name or email, link)
+        else:
+            self.email_service.send_password_reset_email(email, display_name or email, link)
+        return link
 
     async def update_student(self, user_id: str, update: UserUpdate) -> dict:
         user = await self.user_repo.get_by_id(user_id)

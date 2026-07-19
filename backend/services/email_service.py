@@ -47,3 +47,23 @@ class EmailService:
         <p><a href="{settings.frontend_base_url}/chat">Entra aquí para leerlo y responder</a>.</p>
         """
         self.send(to_email, to_name, subject, html)
+
+    def send_welcome_email(self, to_email: str, to_name: str, reset_link: str) -> None:
+        subject = "Bienvenido/a a ADOC — activa tu cuenta"
+        html = f"""
+        <p>Hola {to_name},</p>
+        <p>Tu cuenta en ADOC ya está creada. Antes de entrar, fija tu contraseña:</p>
+        <p><a href="{reset_link}">Fijar mi contraseña</a></p>
+        <p>Este enlace caduca en 24 horas.</p>
+        """
+        self.send(to_email, to_name, subject, html)
+
+    def send_password_reset_email(self, to_email: str, to_name: str, reset_link: str) -> None:
+        subject = "Restablece tu contraseña en ADOC"
+        html = f"""
+        <p>Hola {to_name},</p>
+        <p>Has solicitado restablecer tu contraseña en ADOC:</p>
+        <p><a href="{reset_link}">Fijar nueva contraseña</a></p>
+        <p>Este enlace caduca en 24 horas. Si no lo has pedido tú, ignora este correo.</p>
+        """
+        self.send(to_email, to_name, subject, html)

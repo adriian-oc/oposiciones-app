@@ -109,23 +109,9 @@ const Admin = () => {
     const req = convertingRequest;
     const isProfesor = req.tipo === 'profesor';
     try {
-      await adminService.createStudent({
-        email: req.email,
-        display_name: displayName,
-        role: isProfesor ? 'profesor' : 'student',
-        profile: isProfesor
-          ? null
-          : {
-              full_name: displayName,
-              birth_date: req.nacimiento || null,
-              prep_time: req.tiempo_prep || null,
-              prep_with: req.con_quien || null,
-              weak_points: req.puntos_debiles || null,
-            },
-      });
-      await accessRequestService.updateStatus(req.id, 'converted');
+      await accessRequestService.convert(req.id, displayName);
       setConvertingRequest(null);
-      alert(`${isProfesor ? 'Profesor' : 'Alumno'} creado. Puedes enviarle un enlace de restablecimiento de contraseña desde "Alumnos".`);
+      alert(`${isProfesor ? 'Profesor' : 'Alumno'} creado. Le hemos enviado un correo con su enlace para fijar contraseña.`);
       loadAccessRequests();
     } catch (error) {
       alert('Error al convertir la solicitud: ' + (error.response?.data?.detail || error.message));
@@ -159,7 +145,7 @@ const Admin = () => {
     };
     try {
       await adminService.createStudent(payload);
-      alert('Usuario creado. Se puede enviar un enlace de restablecimiento de contraseña desde su fila.');
+      alert('Usuario creado. Le hemos enviado un correo con su enlace para fijar contraseña.');
       setShowCreateStudent(false);
       setNewStudent({ email: '', display_name: '', role: 'student', duration_days: '30', allowed_content: null });
       loadRoster();
@@ -189,7 +175,7 @@ const Admin = () => {
     try {
       const { reset_link: resetLink } = await adminService.sendPasswordReset(u.id);
       navigator.clipboard.writeText(resetLink);
-      alert(`Enlace de restablecimiento para ${u.email} (copiado, válido 24h):\n${resetLink}`);
+      alert(`Correo enviado a ${u.email} con su enlace para fijar contraseña (también copiado por si acaso, válido 24h):\n${resetLink}`);
     } catch (error) {
       alert('Error al generar el enlace: ' + (error.response?.data?.detail || error.message));
     }

@@ -58,3 +58,6 @@ class AccessRequestStatusUpdate(BaseModel):
         if v not in ("converted", "dismissed", "pending"):
             raise ValueError('Estado no válido')
         return v
+
+class AccessRequestConvert(BaseModel):
+    display_name: str

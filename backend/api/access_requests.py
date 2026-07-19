@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Request, status
 from typing import List
 
-from models.access_request import AccessRequestCreate, AccessRequestResponse, AccessRequestStatusUpdate
+from models.access_request import (
+    AccessRequestCreate,
+    AccessRequestResponse,
+    AccessRequestStatusUpdate,
+    AccessRequestConvert,
+)
 from services.access_request_service import AccessRequestService
 from middleware.auth import require_role
 from utils.rate_limit import limiter
@@ -34,3 +39,15 @@ async def update_access_request(
     current_user: dict = Depends(require_role(["admin"])),
 ):
     return await get_service().update_status(request_id, update.status)
+
+
+@router.post("/{request_id}/convert", response_model=AccessRequestResponse)
+async def convert_access_request(
+    request_id: str,
+    data: AccessRequestConvert,
+    current_user: dict = Depends(require_role(["admin"])),
+):
+    """Crea la cuenta (alumno o profesor) a partir de la solicitud y la marca como convertida
+    en un único paso atómico -- ver AccessRequestService.convert para el porqué de la
+    idempotencia frente a hacerlo en dos llamadas separadas desde el frontend."""
+    return await get_service().convert(request_id, data.display_name)

@@ -17,4 +17,9 @@ export const accessRequestService = {
     const response = await api.patch(`/api/access-requests/${id}`, { status: statusValue });
     return response.data;
   },
+
+  async convert(id, displayName) {
+    const response = await api.post(`/api/access-requests/${id}/convert`, { display_name: displayName });
+    return response.data;
+  },
 };
