@@ -10,4 +10,9 @@ export const messageService = {
     const response = await api.post(`/api/messages/${studentId}`, { text });
     return response.data;
   },
+
+  async getUnreadSummary() {
+    const response = await api.get('/api/messages/unread/summary');
+    return response.data;
+  },
 };

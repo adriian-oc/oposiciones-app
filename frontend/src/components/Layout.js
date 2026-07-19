@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useExamGuard } from '../context/ExamGuardContext';
 import ConfirmDialog from './ConfirmDialog';
+import { messageService } from '../services/messageService';
+
+const UNREAD_POLL_MS = 30000;
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -11,6 +14,28 @@ const Layout = ({ children }) => {
   const { guarded, setGuarded } = useExamGuard();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
+  const [hasUnread, setHasUnread] = useState(false);
+
+  // Sondeo simple del punto rojo de notificaciones -- se re-consulta al cambiar de página (para
+  // que se apague nada más leer el hilo, ver MessageService.get_thread que marca como leído) y
+  // cada 30s de fondo para detectar mensajes nuevos sin recargar.
+  useEffect(() => {
+    if (!user || !['student', 'profesor', 'admin'].includes(user.role)) return;
+    let cancelled = false;
+    const checkUnread = () => {
+      messageService.getUnreadSummary()
+        .then((data) => { if (!cancelled) setHasUnread(data.has_unread); })
+        .catch(() => {});
+    };
+    checkUnread();
+    const interval = setInterval(checkUnread, UNREAD_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user, location.pathname]);
+
+  const notificationsLink = user?.role === 'student' ? '/chat' : user?.role === 'profesor' ? '/profesor' : '/admin';
 
   const handleLogout = async () => {
     await logout();
@@ -96,6 +121,20 @@ const Layout = ({ children }) => {
 
             {/* Escritorio: nombre + cerrar sesión visibles siempre */}
             <div className="hidden sm:flex sm:items-center">
+              <Link
+                to={notificationsLink}
+                onClick={(e) => guardedNavigate(e, notificationsLink)}
+                className="relative mr-4 p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                aria-label="Notificaciones"
+                data-testid="notifications-bell"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {hasUnread && (
+                  <span className="absolute top-0.5 right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" data-testid="notifications-dot" />
+                )}
+              </Link>
               <span className="text-sm text-gray-700 mr-4">
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </span>
@@ -109,7 +148,23 @@ const Layout = ({ children }) => {
             </div>
 
             {/* Móvil: botón hamburguesa en vez de intentar encajar todo en la misma fila */}
-            <div className="flex items-center sm:hidden">
+            <div className="flex items-center gap-1 sm:hidden">
+              <Link
+                to={notificationsLink}
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  guardedNavigate(e, notificationsLink);
+                }}
+                className="relative p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                aria-label="Notificaciones"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {hasUnread && (
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                )}
+              </Link>
               <button
                 onClick={() => setMobileMenuOpen((open) => !open)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"

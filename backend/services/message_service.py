@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from fastapi import HTTPException, status
 
@@ -35,7 +36,34 @@ class MessageService:
 
     async def get_thread(self, student_id: str, current_user: dict) -> list:
         await self._authorize(current_user, student_id)
-        return await self.message_repo.get_thread(student_id)
+        thread = await self.message_repo.get_thread(student_id)
+        await self.message_repo.mark_read(current_user["id"], student_id, datetime.utcnow())
+        return thread
+
+    async def has_unread(self, current_user: dict) -> bool:
+        """Para el punto rojo del icono de notificaciones -- alumno mira su propio hilo,
+        profesor los de sus alumnos asignados, admin los de todos los alumnos."""
+        role = current_user["role"]
+        if role == "student":
+            student_ids = [current_user["id"]]
+        elif role in ("profesor", "admin"):
+            students = await self.user_repo.list_all()
+            student_ids = [
+                s["id"] for s in students
+                if s.get("role") == "student"
+                and (role == "admin" or s.get("assigned_profesor_id") == current_user["id"])
+            ]
+        else:
+            return False
+
+        for student_id in student_ids:
+            last_message = await self.message_repo.get_last_message(student_id)
+            if not last_message or last_message["sender_id"] == current_user["id"]:
+                continue
+            read = await self.message_repo.get_read(current_user["id"], student_id)
+            if not read or last_message["created_at"] > read["last_read_at"]:
+                return True
+        return False
 
     async def send_message(self, student_id: str, data: MessageCreate, current_user: dict) -> dict:
         await self._authorize(current_user, student_id)

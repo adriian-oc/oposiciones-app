@@ -27,3 +27,10 @@ class MessageResponse(BaseModel):
     sender_id: str
     text: str
     created_at: datetime
+
+class MessageReadInDB(BaseModel):
+    """Cuándo leyó CADA usuario (alumno, o cada profesor/admin que comparte el hilo) por
+    última vez el hilo de un alumno -- una fila por (user_id, student_id), no por mensaje."""
+    user_id: str
+    student_id: str
+    last_read_at: datetime = Field(default_factory=datetime.utcnow)
