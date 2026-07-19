@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 // La tabla de roster se ve como tarjetas apiladas en móvil, no una tabla con scroll horizontal
 // (inusable para un admin no técnico en el teléfono): dos layouts Tailwind (tabla oculta en
@@ -92,6 +93,12 @@ const RosterTable = ({
       </button>
       {u.role === 'student' && (
         <>
+          <Link
+            to={`/profesor/chat/${u.id}`}
+            className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
+          >
+            💬 Chat
+          </Link>
           <button onClick={() => onEditProfile(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
             👤 Perfil
           </button>
