@@ -8,13 +8,14 @@ import { messageService } from '../services/messageService';
 const UNREAD_POLL_MS = 30000;
 
 const Layout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, switchAccount } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { guarded, setGuarded } = useExamGuard();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
   const [hasUnread, setHasUnread] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   // Sondeo simple del punto rojo de notificaciones -- se re-consulta al cambiar de página (para
   // que se apague nada más leer el hilo, ver MessageService.get_thread que marca como leído) y
@@ -40,6 +41,22 @@ const Layout = ({ children }) => {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  // Cambio rápido entre las dos cuentas (admin/profesor) de una misma persona real -- solo
+  // aparece si un admin ya vinculó ambas cuentas (user.linked_user_id, ver Admin.js). No pasa
+  // por el aviso de "examen sin terminar": es un botón explícito, no una navegación incidental.
+  const handleSwitchAccount = async () => {
+    setSwitching(true);
+    try {
+      await switchAccount();
+      setMobileMenuOpen(false);
+      navigate('/');
+    } catch (error) {
+      alert('No se pudo cambiar de cuenta: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setSwitching(false);
+    }
   };
 
   // Mientras hay un examen sin terminar, cualquier salida por el nav (incluido cerrar sesión)
@@ -138,6 +155,16 @@ const Layout = ({ children }) => {
               <span className="text-sm text-gray-700 mr-4">
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </span>
+              {user?.linked_user_id && (
+                <button
+                  onClick={handleSwitchAccount}
+                  disabled={switching}
+                  className="mr-4 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  data-testid="switch-account-button"
+                >
+                  🔀 {switching ? 'Cambiando...' : 'Cambiar de cuenta'}
+                </button>
+              )}
               <button
                 onClick={guardedLogout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
@@ -215,6 +242,15 @@ const Layout = ({ children }) => {
               <div className="text-sm text-gray-700 mb-3">
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </div>
+              {user?.linked_user_id && (
+                <button
+                  onClick={handleSwitchAccount}
+                  disabled={switching}
+                  className="w-full text-center px-4 py-2 mb-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  🔀 {switching ? 'Cambiando...' : 'Cambiar de cuenta'}
+                </button>
+              )}
               <button
                 onClick={guardedLogout}
                 className="w-full text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"

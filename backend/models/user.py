@@ -48,6 +48,11 @@ class UserInDB(UserBase):
     payment_type: Optional[str] = None
     payments_received: List[PaymentRecord] = Field(default_factory=list)
     profile: Optional[Profile] = None
+    # Cuenta hermana de la MISMA persona real (p.ej. Adrián tiene cuenta de admin y de profesor)
+    # -- puramente informativo/de conveniencia para el cambio rápido de cuenta, ver
+    # POST /api/auth/switch. Lo fija un admin y AdminService.update_student lo hace recíproco
+    # automáticamente en ambas cuentas.
+    linked_user_id: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str
@@ -61,6 +66,7 @@ class UserResponse(UserBase):
     payment_type: Optional[str] = None
     payments_received: List[PaymentRecord] = Field(default_factory=list)
     profile: Optional[Profile] = None
+    linked_user_id: Optional[str] = None
     has_novedades: Optional[bool] = None  # solo se rellena al listar para un admin/profesor concreto
     progress_summary: Optional[dict] = None  # solo se rellena al listar (AdminService.list_students)
 
@@ -75,6 +81,7 @@ class UserUpdate(BaseModel):
     payments_received: Optional[List[PaymentRecord]] = None
     profile: Optional[Profile] = None
     role: Optional[str] = None
+    linked_user_id: Optional[str] = None
 
 class SelfProfileUpdate(BaseModel):
     """Autoservicio: lo que un usuario puede cambiar de sí mismo (nunca role/revoked/

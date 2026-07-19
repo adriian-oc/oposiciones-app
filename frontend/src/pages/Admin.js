@@ -582,6 +582,7 @@ const Admin = () => {
       {profileEditingUser && (
         <ProfileEditorModal
           user={profileEditingUser}
+          roster={roster}
           onClose={() => setProfileEditingUser(null)}
           onSave={handleSaveProfile}
         />
@@ -797,7 +798,7 @@ const ExpiryEditorModal = ({ user, onClose, onSave }) => {
 
 const PREP_TIME_OPTIONS = ['', 'Sin empezar', 'Menos de 6 meses', '6 meses - 1 año', '1 - 2 años', 'Más de 2 años'];
 
-const ProfileEditorModal = ({ user, onClose, onSave }) => {
+const ProfileEditorModal = ({ user, roster, onClose, onSave }) => {
   const profile = user.profile || {};
   const isStudent = user.role === 'student';
   const [fullName, setFullName] = useState(profile.full_name || user.display_name || '');
@@ -805,6 +806,11 @@ const ProfileEditorModal = ({ user, onClose, onSave }) => {
   const [prepTime, setPrepTime] = useState(profile.prep_time || '');
   const [prepWith, setPrepWith] = useState(profile.prep_with || '');
   const [weakPoints, setWeakPoints] = useState(profile.weak_points || '');
+  const [linkedUserId, setLinkedUserId] = useState(user.linked_user_id || '');
+
+  const linkableAccounts = (roster || []).filter(
+    (u) => (u.role === 'admin' || u.role === 'profesor') && u.id !== user.id
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -817,6 +823,7 @@ const ProfileEditorModal = ({ user, onClose, onSave }) => {
         prep_with: prepWith.trim() || null,
         weak_points: weakPoints.trim() || null,
       },
+      ...(!isStudent && { linked_user_id: linkedUserId || null }),
     });
   };
 
@@ -838,6 +845,25 @@ const ProfileEditorModal = ({ user, onClose, onSave }) => {
             <label className="block text-sm font-medium text-gray-700">Correo (no editable, es su acceso)</label>
             <input type="text" value={user.email} disabled className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
           </div>
+          {!isStudent && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cuenta vinculada (misma persona)</label>
+              <select
+                value={linkedUserId}
+                onChange={(e) => setLinkedUserId(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Ninguna</option>
+                {linkableAccounts.map((u) => (
+                  <option key={u.id} value={u.id}>{u.display_name} ({u.role})</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Si esta persona tiene dos cuentas (p.ej. admin y profesor), vincúlalas aquí para
+                que pueda cambiar entre ellas con un botón, sin volver a iniciar sesión.
+              </p>
+            </div>
+          )}
           {isStudent && (
             <>
               <div>

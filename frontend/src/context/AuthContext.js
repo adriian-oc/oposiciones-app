@@ -44,11 +44,18 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
+  const switchAccount = async () => {
+    const userData = await authService.switchAccount();
+    setUser(userData);
+    return userData;
+  };
+
   const value = {
     user,
     login,
     logout,
     refreshUser,
+    switchAccount,
     isAuthenticated: !!user,
     loading,
   };

@@ -97,7 +97,20 @@ class AdminService:
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-        return await self.user_repo.update_fields(user_id, update)
+        updated = await self.user_repo.update_fields(user_id, update)
+
+        if "linked_user_id" in update.model_fields_set:
+            # El vínculo entre las dos cuentas de una misma persona real es recíproco -- fijarlo
+            # en un solo lado (o quitarlo) lo refleja también en el otro, así el cambio rápido de
+            # cuenta (POST /api/auth/switch) funciona en los dos sentidos sin doble edición manual.
+            old_linked_id = user.get("linked_user_id")
+            new_linked_id = update.linked_user_id
+            if old_linked_id and old_linked_id != new_linked_id:
+                await self.user_repo.update_fields(old_linked_id, UserUpdate(linked_user_id=None))
+            if new_linked_id:
+                await self.user_repo.update_fields(new_linked_id, UserUpdate(linked_user_id=user_id))
+
+        return updated
 
     async def set_revoked(self, user_id: str, revoked: bool) -> dict:
         """Revocar nunca borra la cuenta ni el doc de roster -- si se borrara, el email
