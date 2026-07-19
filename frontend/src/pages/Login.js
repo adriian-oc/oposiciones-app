@@ -28,9 +28,8 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-6">
-        <Link to="/" className="flex items-center justify-center gap-2 text-xl font-bold text-primary-700">
-          <img src="/branding/logo.png" alt="ADOC" className="h-10 w-10 object-contain" />
-          ADOC
+        <Link to="/" className="flex items-center justify-center">
+          <img src="/branding/logo.png" alt="ADOC" className="h-20 w-auto object-contain" />
         </Link>
         <div>
           <h2 className="text-center text-2xl font-bold text-gray-900">Inicia sesión</h2>

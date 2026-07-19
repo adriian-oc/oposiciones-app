@@ -46,9 +46,8 @@ const Landing = () => {
       {/* Barra superior: marca + acceso, sin más navegación que distraiga */}
       <header className="border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-700">
-            <img src="/branding/logo.png" alt="ADOC" className="h-9 w-9 object-contain" />
-            ADOC
+          <Link to="/" className="flex items-center">
+            <img src="/branding/logo.png" alt="ADOC" className="h-12 w-auto object-contain" />
           </Link>
           <Link
             to="/login"
@@ -171,8 +170,8 @@ const Landing = () => {
 
       <footer className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
         <div className="flex items-center gap-2">
-          <img src="/branding/logo.png" alt="ADOC" className="h-6 w-6 object-contain" />
-          <span>ADOC · Academia de Oposiciones C1</span>
+          <img src="/branding/logo.png" alt="ADOC" className="h-8 w-auto object-contain" />
+          <span>Academia de Oposiciones C1</span>
         </div>
         <div className="flex items-center gap-4">
           <a href="mailto:Oposicionesadoc@gmail.com" className="hover:text-primary-600">Oposicionesadoc@gmail.com</a>

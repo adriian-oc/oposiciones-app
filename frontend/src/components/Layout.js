@@ -37,9 +37,8 @@ const Layout = ({ children }) => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
-                  <img src="/branding/logo.png" alt="ADOC" className="h-14 w-14 object-contain" />
-                  ADOC
+                <Link to="/" className="flex items-center">
+                  <img src="/branding/logo.png" alt="ADOC" className="h-12 w-auto object-contain" />
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
