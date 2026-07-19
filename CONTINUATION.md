@@ -274,41 +274,100 @@ verificada por `pytest` (14/14) y en navegador con los 3 usuarios de prueba:
   next_review_date=mañana`; adelantando esa fecha a "hoy" y regenerando, la unidad reapareció
   correctamente etiquetada "review" con el motivo correcto.
 
-**Ronda 8 (usuarios reales, landing de venta) — en curso**:
+**Ronda 8 (usuarios reales, landing de venta, práctica directa desde Analítica, despliegue
+completo a producción) — completa**:
 
-- **11 cuentas reales creadas en la Mongo local** (`opositores_dev`), a partir de un roster que
-  compartió el usuario (captura de pantalla de su panel de administración actual, con correos
-  reales, fechas de expiración y estado de pago): 9 alumnas/os con contraseña `Nueva.123`,
-  `adrian.oliva.carceles@gmail.com` como profesor (`AdocAdmin2026!`) y
-  `oposicionesadoc@gmail.com` como admin (`kyrbYj-8gunwe-nettaf`). Creadas con un script
-  temporal fuera del repo (scratchpad, borrado tras usarse) — **no hay ningún script en el repo
-  que las recree**; si hace falta reconstruir la Mongo local desde cero, solo quedan los 3
-  usuarios sintéticos de `dev_bootstrap.py`. Los nombres mostrados de los 9 alumnos se derivaron
-  del prefijo del correo (no había columna de nombre en la captura) — pendiente de que cada
-  alumno los corrija en su perfil si hace falta. **Estas cuentas existen solo en local: no hay
-  base de datos de producción todavía** (bloqueado en la infraestructura, ver más abajo).
-- **Página de inicio (`/`) rediseñada como landing de venta**: antes redirigía siempre a
-  `Login.js` (que había ganado una cabecera de marketing en la ronda 6). Se separó en dos
-  páginas: `frontend/src/pages/Landing.js` (nueva, pública, con héroe/beneficios/diferenciador
-  de repaso espaciado/cómo-empezar/CTA final, acceso "Iniciar sesión" arriba a la derecha, sin
-  testimonios ni cifras inventadas) y `Login.js` (vuelto a un formulario simple, sin la cabecera
-  de marketing). `App.js`: `/` muestra `Landing` si no hay sesión, y el dashboard de siempre si
-  la hay. Verificado en navegador (desktop y móvil, logout→login funcionando).
-  **Sin commitear ni subir todavía** — `git status` en este punto: `App.js` y `Login.js`
-  modificados, `Landing.js` nuevo, sin trackear.
+- **Landing de venta en `/`**: `frontend/src/pages/Landing.js` (nueva, pública, héroe/beneficios/
+  diferenciador de repaso espaciado/cómo-empezar/CTA final, acceso "Iniciar sesión" arriba a la
+  derecha, sin testimonios ni cifras inventadas), `Login.js` vuelto a formulario simple. `App.js`:
+  `/` muestra `Landing` si no hay sesión.
+- **Historial (Mi Progreso)**: los intentos sin terminar ganan botón "Ver respuestas"
+  (`frontend/src/pages/AttemptProgress.js`, endpoint nuevo
+  `GET /api/exams/attempts/{id}/progress`) — muestra lo ya contestado y sus fallos sin revelar
+  las respuestas de lo que aún no se ha contestado.
+- **Por tema (Mi Progreso)**: reorganizado para mostrar Cuadernillo y Teoría como filas
+  independientes por tema de Parte Específica, solo Teoría en Parte General.
+- **Analítica → Practicar**: el plan de estudio ahora tiene un botón real que lleva a Cuadernos
+  con el tema débil resaltado y solo las áreas practicables abiertas (`Cuadernos.js` acepta
+  `?theme=<id>`).
+- **11 cuentas reales del roster del usuario** creadas tanto en Mongo local (`opositores_dev`)
+  como en **Mongo de producción (Atlas)**: 9 alumnas/os, `adrian.oliva.carceles@gmail.com` como
+  profesor, `oposicionesadoc@gmail.com` como admin. Creadas con scripts temporales fuera del
+  repo (scratchpad, borrados tras usarse) — **no hay ningún script en el repo que las recree, y
+  sus contraseñas NUNCA deben escribirse en ningún archivo del repo** (ver incidente de
+  seguridad más abajo). Nombres de los 9 alumnos derivados del prefijo del correo (no había
+  columna de nombre en la captura que compartió el usuario) — pendiente de que cada alumno los
+  corrija en su perfil si hace falta.
 
-## Lo único pendiente: infraestructura de producción y cutover del dominio
+## ⚠️ Incidente de seguridad (2026-07-19, resuelto): contraseñas reales expuestas en GitHub
 
-**Bloqueado en el usuario**, no en mí: no puedo crear cuentas de terceros en su nombre. Falta que
-él cree:
-1. Cluster gratuito en **MongoDB Atlas**
-2. Backend desplegado en **Render o Railway** (ya está `backend/Procfile` listo)
-3. Frontend desplegado en **Vercel o Netlify**
+Durante la ronda 8 se escribieron las contraseñas reales en texto plano en una versión anterior
+de este mismo archivo, que se subió a `pagina-final` — **un repositorio público de GitHub**. Se
+detectó en la misma sesión (comprobando por qué el dominio de Vercel no cargaba, se acabó
+revisando el repo en GitHub y viendo que era público). Acción tomada de inmediato:
+1. Las 11 contraseñas de producción se **rotaron** (admin, profesor, y una nueva contraseña
+   compartida para los 9 alumnos, distinta de la original) — las que quedaron expuestas ya no
+   sirven para entrar a ninguna cuenta real.
+2. Este archivo se reescribió para no volver a contener contraseñas.
+3. **No se reescribió el historial de git** (`git push --force` para purgarlo sería una acción
+   destructiva que requiere confirmación explícita, y rotar las contraseñas ya neutraliza el
+   riesgo real sin necesidad de tocar el historial).
 
-Toda la configuración/documentación de despliegue ya está preparada: `backend/.env.example`,
-`frontend/.env.example`, instrucciones paso a paso en `README.md` del repo. El cutover final del
-dominio de producción **requiere aprobación explícita del usuario en el momento**, nunca
-autónoma.
+**Regla dura a partir de ahora**: ninguna contraseña real (de producción o de cualquier cuenta
+de una persona real) se escribe en ningún archivo de este repo, ni siquiera en `CONTINUATION.md`
+— solo se comunican por chat directamente al usuario, nunca por escrito en un archivo versionado.
+
+## Producción: desplegada y verificada de punta a punta (2026-07-19)
+
+Las tres piezas están en vivo y conectadas entre sí — el usuario creó las tres cuentas de
+hosting él mismo (no puedo crear cuentas de terceros en su nombre), y desde ahí tomé el control
+de su mismo navegador (extensión Claude in Chrome, ya autenticada) para configurar y desplegar
+todo:
+
+1. **MongoDB Atlas**: cluster `Academia`, base `opositores_db`, usuario
+   `adrianolivacarceles_db_user`, acceso de red abierto a `0.0.0.0/0` (necesario porque el
+   backend se conecta desde una IP externa). Cadena de conexión guardada como variable de
+   entorno en Render, nunca en el repo.
+2. **Backend en Render** (plan Free — **no Railway**: Railway solo da 30 días o 5$ de crédito de
+   prueba y luego hay que pagar un plan; Render tiene un plan gratuito real, con el único coste
+   de que el servicio "duerme" tras 15 min sin uso y la siguiente petición tarda ~30-50s).
+   Servicio `Pagina-final`, root directory `backend`, start command
+   `uvicorn server:app --host 0.0.0.0 --port $PORT` (mismo comando que `backend/Procfile`,
+   Render no lo lee automáticamente así que se configuró a mano). URL:
+   **`https://pagina-final-mhnt.onrender.com`**.
+3. **Frontend en Vercel** (plan Free/Hobby). Proyecto `pagina-final`, root directory `frontend`,
+   preset Create React App, variable `REACT_APP_API_URL` apuntando al backend de Render. URL
+   estable de producción: **`https://pagina-final-nine.vercel.app`** (ojo: la UI de Vercel/GitHub
+   a veces muestra el dominio o rutas de archivos con acentos raros tipo "página-final-nueve" por
+   un glitch de renderizado — el dominio/rutas reales, sin tildes, son los de este documento).
+   El "preset de servicios" multi-repo de Vercel había detectado también `backend/` como un
+   segundo servicio a desplegar — se descartó explícitamente (el backend ya vive en Render) y se
+   forzó el preset a "Create React App" con root directory `frontend` únicamente.
+4. **`FRONTEND_BASE_URL`** en Render actualizado de `http://localhost:3000` a la URL real de
+   Vercel (se usa para construir los enlaces de restablecimiento de contraseña que el admin
+   genera y comparte).
+
+**Bug real encontrado y arreglado durante el despliegue**: el primer intento de deploy en Vercel
+falló — `frontend/src/pages/Cuadernos.js`, el `useCallback` de `load` usaba `highlightThemeId`
+sin declararlo en el array de dependencias (`react-hooks/exhaustive-deps`). En local
+`react-scripts start` solo avisa; el build de producción (`CI=true`, como pone Vercel por
+defecto) trata los warnings de ESLint como error y rompe el build. Arreglado añadiendo
+`highlightThemeId` a las dependencias; verificado localmente con `CI=true npm run build` antes
+de volver a subir.
+
+**Verificado de punta a punta**: login real contra `https://pagina-final-nine.vercel.app` con
+la cuenta admin — la petición viaja al backend de Render, consulta Mongo Atlas, devuelve JWT y
+entra al panel de admin. Las 11 cuentas reales del roster ya existen también en esta base de
+producción (contraseñas rotadas tras el incidente de seguridad de arriba — pedir al usuario que
+las comparta si hace falta operar sobre esas cuentas, nunca reconstruirlas escribiéndolas aquí).
+
+**Instrucción permanente para este repo**: el usuario pidió subir siempre todos los cambios a
+GitHub sin esperar confirmación previa (a diferencia de la política general de pedir permiso
+antes de cada `git push`) — ver memoria `feedback_adoc_always_push`. Esto NO se extiende a
+desplegar de verdad en producción ni a tocar la infraestructura de hosting: eso sigue
+necesitando confirmación explícita en el momento. Y, por el incidente de arriba, **tampoco se
+extiende a escribir credenciales reales en ningún archivo** — eso nunca es automático,
+independientemente de la instrucción de "subir siempre".
 
 ## Entorno de desarrollo local (cómo retomar)
 
@@ -337,13 +396,13 @@ base desde cero.
 
 ## Cómo seguir
 
-Cuando retomes:
-1. Confirma que los 3 servicios locales están arriba (Mongo, backend, frontend).
-2. Pregunta si quiere commitear y subir el rediseño de la landing (`git status` mostrará
-   `App.js`/`Login.js` modificados y `Landing.js` nuevo si no se ha hecho ya) — **no lo subas sin
-   que lo pida explícitamente en esta conversación**, aunque ya haya pedido subir trabajo en el
-   pasado.
-3. Pregunta si quiere seguir puliendo la landing/funcionalidades en local, o si ya tiene alguna
-   de las 3 cuentas de infraestructura de producción creadas para avanzar hacia el despliegue.
-   Cualquier acción de despliegue real necesita su confirmación explícita en el momento, nunca
-   se asume de una aprobación anterior.
+Producción ya está desplegada y funcionando (ver sección de arriba) — esto ya no es lo primero
+que preguntar. Cuando retomes:
+1. Confirma que los 3 servicios locales están arriba si vas a seguir trabajando en local (Mongo,
+   backend, frontend) — no hace falta si el trabajo es solo verificar producción.
+2. Cambios nuevos: seguir subiéndolos a GitHub sin pedir confirmación (instrucción permanente,
+   ver memoria `feedback_adoc_always_push`), pero **nunca escribir contraseñas u otras
+   credenciales reales en ningún archivo del repo** — el repo `pagina-final` es público.
+3. Si el trabajo toca producción de verdad (desplegar un cambio en Render/Vercel más allá de un
+   simple `git push` que ya auto-despliega, tocar variables de entorno, rotar credenciales,
+   etc.), pedir confirmación explícita en el momento — nunca asumir de una aprobación anterior.
