@@ -51,7 +51,35 @@ const practicalSetService = {
     } catch (error) {
       throw error.response?.data || error;
     }
-  }
+  },
+
+  // Editar/añadir/borrar una pregunta embebida (árbol de Gestionar Preguntas, ronda 5)
+  updateQuestion: async (practicalSetId, questionId, data) => {
+    try {
+      const response = await api.put(`/api/practical-sets/${practicalSetId}/questions/${questionId}`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  addQuestion: async (practicalSetId, data) => {
+    try {
+      const response = await api.post(`/api/practical-sets/${practicalSetId}/questions`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  deleteQuestion: async (practicalSetId, questionId) => {
+    try {
+      const response = await api.delete(`/api/practical-sets/${practicalSetId}/questions/${questionId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
 };
 
 export default practicalSetService;

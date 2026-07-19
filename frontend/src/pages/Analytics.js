@@ -206,11 +206,11 @@ const Analytics = () => {
               <p className="text-blue-700 mt-1">Crea un examen enfocado en tus áreas de mejora</p>
             </div>
             <Link
-              to="/exams/new"
+              to="/cuadernos"
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               data-testid="create-focused-exam-button"
             >
-              Crear Examen
+              Ir a Cuadernos
             </Link>
           </div>
         </div>

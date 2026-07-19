@@ -77,3 +77,13 @@ class QuestionRepository:
 
     async def count_by_theme(self, theme_id: str) -> int:
         return await self.collection.count_documents({"theme_id": theme_id})
+
+    async def count_by_theme_grouped(self, content_area: str) -> dict:
+        """Nº de preguntas por tema para un área de contenido, en una sola query -- evita N+1
+        desde Cuadernos.js al decidir qué temas de Test de Teoría son practicables."""
+        pipeline = [
+            {"$match": {"content_area": content_area}},
+            {"$group": {"_id": "$theme_id", "count": {"$sum": 1}}},
+        ]
+        rows = await self.collection.aggregate(pipeline).to_list(length=None)
+        return {row["_id"]: row["count"] for row in rows}

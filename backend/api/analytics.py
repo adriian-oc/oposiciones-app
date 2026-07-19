@@ -42,6 +42,15 @@ async def get_top_failed_questions(
     service = get_analytics_service()
     return await service.get_top_failed_questions_for_staff(current_user, theme_id, limit)
 
+@router.get("/practice-stats")
+async def get_practice_stats(
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
+):
+    """Panel de refuerzo: nota media + intentos por unidad de contenido, de todos los alumnos
+    (admin) o los asignados (profesor)."""
+    service = get_analytics_service()
+    return await service.get_practice_stats_for_staff(current_user)
+
 @router.get("/overall-stats", response_model=OverallStats)
 async def get_overall_stats(
     current_user: dict = Depends(get_current_user)

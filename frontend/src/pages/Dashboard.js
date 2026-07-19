@@ -63,7 +63,7 @@ const Dashboard = () => {
         {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link
-            to="/exams/new"
+            to="/cuadernos"
             className="block p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow border border-gray-200"
             data-testid="create-exam-card"
           >
@@ -74,14 +74,14 @@ const Dashboard = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Generar Examen</h3>
-                <p className="mt-1 text-sm text-gray-600">Crea un nuevo examen personalizado</p>
+                <h3 className="text-lg font-medium text-gray-900">Practicar</h3>
+                <p className="mt-1 text-sm text-gray-600">Ve a Cuadernos para empezar a practicar</p>
               </div>
             </div>
           </Link>
 
           <Link
-            to="/exams/history"
+            to="/progreso?tab=historial"
             className="block p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow border border-gray-200"
             data-testid="history-card"
           >

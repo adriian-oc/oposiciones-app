@@ -52,6 +52,7 @@ class AnswerSubmit(BaseModel):
 
 class AttemptStart(BaseModel):
     exam_id: str
+    live_correction: bool = False
 
 class AttemptInDB(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -66,6 +67,10 @@ class AttemptInDB(BaseModel):
     # directamente (rollup de progreso, Fase 6) sin tener que unir contra `exams` cada vez.
     mode: str = "exam"
     content_unit_key: Optional[str] = None
+    # Si está activo, submit_answer devuelve is_correct/correct_answer al momento de contestar
+    # cada pregunta (en vez de solo al finalizar) -- decisión explícita del alumno al arrancar,
+    # apagado por defecto para no reabrir el leak cerrado en ExamService._scrub_exam.
+    live_correction: bool = False
 
 class AttemptResponse(BaseModel):
     id: str

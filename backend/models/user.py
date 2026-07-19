@@ -21,17 +21,25 @@ class UserBase(BaseModel):
     role: str = "student"  # admin, profesor, curator, student
 
 class UserCreate(UserBase):
-    """Alta de alumno/staff por un admin -- crea la cuenta en Firebase Auth y el roster en Mongo,
-    nunca una contraseña en claro (ver services/firebase_service.py::generate_password_reset_link)."""
-    pass
+    """Alta de alumno/staff por un admin -- crea el roster en Mongo con una contraseña inicial
+    inutilizable; el admin genera y comparte un enlace de restablecimiento para que la persona
+    fije su propia contraseña (nunca se ve/gestiona una contraseña en claro)."""
+    expires_at: Optional[datetime] = None
+    allowed_content: Optional[List[str]] = None
+    profile: Optional[Profile] = None
 
 class UserInDB(UserBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    firebase_uid: str
+    password_hash: str
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Campos de roster (portados de roster/{uid} en Firestore, ver CLAUDE.md de ADOC)
+    # Restablecimiento de contraseña de un solo uso: se guarda solo el hash del token (igual que
+    # una contraseña), nunca el token en claro. Ver services/auth_service.py.
+    password_reset_token_hash: Optional[str] = None
+    password_reset_expires: Optional[datetime] = None
+
+    # Campos de roster de acceso/facturación del alumno
     expires_at: Optional[datetime] = None  # solo se aplica a role=student
     revoked: bool = False  # se comprueba ANTES de expires_at; bloquea cualquier rol, incluido staff
     allowed_content: Optional[List[str]] = None  # None = acceso completo
@@ -43,7 +51,6 @@ class UserInDB(UserBase):
 
 class UserResponse(UserBase):
     id: str
-    firebase_uid: str
     is_active: bool
     created_at: datetime
     expires_at: Optional[datetime] = None
@@ -55,6 +62,7 @@ class UserResponse(UserBase):
     payments_received: List[PaymentRecord] = Field(default_factory=list)
     profile: Optional[Profile] = None
     has_novedades: Optional[bool] = None  # solo se rellena al listar para un admin/profesor concreto
+    progress_summary: Optional[dict] = None  # solo se rellena al listar (AdminService.list_students)
 
 class UserUpdate(BaseModel):
     """Campos que un admin puede parchear en el roster de un usuario existente."""

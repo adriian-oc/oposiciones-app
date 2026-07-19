@@ -3,18 +3,29 @@ from typing import Optional
 from datetime import datetime
 import uuid
 
-# Whitelist explícito de campos + status fijo a 'pending' en la creación: en ADOC esto lo
-# garantizaba una regla declarativa de Firestore (firestore.rules:36-39); FastAPI no tiene motor
-# de reglas, así que se reimplementa aquí, en el propio modelo Pydantic de entrada.
+# Whitelist explícito de campos + status fijo a 'pending' en la creación: solo se acepta lo que
+# el modelo declara, así el endpoint público no puede usarse para escribir campos arbitrarios.
 class AccessRequestCreate(BaseModel):
+    tipo: str = "alumno"  # "alumno" | "profesor"
     email: EmailStr
     nombre: str
-    nacimiento: Optional[str] = None
     telefono: Optional[str] = None
+    mensaje: Optional[str] = None
+    # Campos de alumno (formulario "Solicita acceso")
+    nacimiento: Optional[str] = None
     tiempo_prep: Optional[str] = None
     con_quien: Optional[str] = None
     puntos_debiles: Optional[str] = None
-    mensaje: Optional[str] = None
+    # Campos de profesor (formulario "Trabaja con nosotros")
+    especialidad: Optional[str] = None
+    experiencia: Optional[str] = None
+    disponibilidad: Optional[str] = None
+
+    @validator('tipo')
+    def valid_tipo(cls, v):
+        if v not in ("alumno", "profesor"):
+            raise ValueError('Tipo no válido')
+        return v
 
     @validator('email')
     def email_len(cls, v):
@@ -22,7 +33,10 @@ class AccessRequestCreate(BaseModel):
             raise ValueError('Email demasiado largo')
         return v
 
-    @validator('nombre', 'nacimiento', 'telefono', 'tiempo_prep', 'con_quien', 'puntos_debiles', 'mensaje')
+    @validator(
+        'nombre', 'nacimiento', 'telefono', 'tiempo_prep', 'con_quien', 'puntos_debiles',
+        'especialidad', 'experiencia', 'disponibilidad', 'mensaje',
+    )
     def field_len(cls, v):
         if v is not None and len(v) > 3000:
             raise ValueError('Campo demasiado largo')

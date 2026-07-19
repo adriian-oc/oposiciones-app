@@ -8,8 +8,7 @@ class Choice(BaseModel):
     text: str
 
 class QuestionEditHistoryEntry(BaseModel):
-    """Estado de la pregunta justo antes de una edición -- sustituye al overlay
-    questionOverrides de ADOC ahora que cada pregunta tiene un id real y estable."""
+    """Estado de la pregunta justo antes de una edición, para poder auditar/deshacer cambios."""
     text: str
     choices: List[str]
     correct_answer: int

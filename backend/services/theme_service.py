@@ -26,10 +26,9 @@ class ThemeService:
             )
         return theme
     
-    # Temas reales de ADOC (portados de ESPECIFICA_TEMAS/ESPECIFICA_TEMA_LABELS/GENERAL_TEMAS en
-    # /Users/adrian/Desktop/Adoc/webapp/index.html:1131-1139). tema_key es la clave usada por
-    # QUIZ_DATA (p.ej. "cuad_8IT") -- necesaria para que la migración del banco de preguntas
-    # (scripts/migrate_quiz_data.py) pueda resolver theme_id a partir del prefijo+tema_key.
+    # Temario real de la oposición (15 temas de parte específica + 23 de parte general).
+    # tema_key es la clave corta usada por scripts/migrate_quiz_data.py (p.ej. "8IT") para
+    # resolver theme_id a partir del prefijo de área + tema_key al importar el banco de preguntas.
     SPECIFIC_THEMES = [
         ("1", "Tema 1 — Constitución y LGSS"),
         ("2", "Tema 2 — Acción Protectora RSE"),
@@ -50,7 +49,7 @@ class ThemeService:
     GENERAL_THEMES = [(str(i), f"Tema {i}") for i in range(1, 24)]
 
     async def seed_initial_themes(self):
-        """Siembra los temas reales de ADOC (15 específica + 23 general)."""
+        """Siembra el temario real de la oposición (15 temas de parte específica + 23 de parte general)."""
         existing = await self.theme_repo.get_all()
         if existing:
             logger.info("Themes already exist, skipping seed")

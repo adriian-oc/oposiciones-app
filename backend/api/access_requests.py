@@ -16,9 +16,9 @@ def get_service():
 @router.post("/", response_model=AccessRequestResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/hour")
 async def create_access_request(request: Request, data: AccessRequestCreate):
-    """Formulario público de solicitud de acceso -- sin autenticación, igual que en ADOC
-    (accessRequests/{id}: cualquiera puede crear, solo el admin lee/gestiona). Limitado por IP
-    para que no se pueda hacer spam de solicitudes al no requerir login."""
+    """Formulario público de solicitud de acceso (alumno o profesor) -- sin autenticación,
+    cualquiera puede crear una, solo el admin la lee/gestiona. Limitado por IP para que no se
+    pueda hacer spam de solicitudes al no requerir login."""
     return await get_service().create_request(data)
 
 

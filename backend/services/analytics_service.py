@@ -185,6 +185,30 @@ class AnalyticsService:
             ))
         return results
 
+    async def get_practice_stats_for_staff(self, staff_user: dict) -> dict:
+        """Nota media + intentos por content_unit_key para el árbol de Refuerzo. Mismo criterio
+        de scope que get_top_failed_questions_for_staff (admin=todos, profesor=asignados)."""
+        user_ids = None
+        if staff_user["role"] == "profesor":
+            assigned = await self.user_repo.list_by_assigned_profesor(staff_user["id"])
+            user_ids = [u["id"] for u in assigned]
+            if not user_ids:
+                return {}
+        elif staff_user["role"] != "admin":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+
+        rows = await self.exam_repo.get_practice_stats_by_content_unit(user_ids)
+        return {
+            row["_id"]: {
+                "avg_score": round(row["avg_score"], 2) if row["avg_score"] is not None else None,
+                "scale": row["scale"],
+                "attempts_count": row["attempts_count"],
+                "distinct_students": row["distinct_students"],
+            }
+            for row in rows
+            if row["_id"]
+        }
+
     async def get_overall_stats(self, user_id: str) -> OverallStats:
         """Get overall statistics for a user"""
         # Get theme-level stats

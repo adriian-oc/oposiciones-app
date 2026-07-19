@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
-from services.firebase_service import init_firebase
 from utils.rate_limit import limiter
-from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests, study_calendar
+from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests, study_calendar, notes, documents
+from pathlib import Path
 import logging
 
 # Configure logging
@@ -40,7 +41,6 @@ app.add_middleware(
 async def startup_event():
     logger.info("Starting up application...")
     await connect_to_mongo()
-    init_firebase()
 
     # Seed initial themes
     try:
@@ -83,6 +83,14 @@ app.include_router(profesor.router)
 app.include_router(progress.router)
 app.include_router(access_requests.router)
 app.include_router(study_calendar.router)
+app.include_router(notes.router)
+app.include_router(documents.router)
+
+# Sirve los PDFs subidos por profesores -- almacenamiento en disco local, solo válido en
+# desarrollo (ver nota en services/document_submission_service.py).
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 if __name__ == "__main__":
     import uvicorn

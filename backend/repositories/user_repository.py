@@ -1,6 +1,7 @@
 from config.database import get_database
 from models.user import UserInDB, UserCreate, UserUpdate
 from typing import List, Optional
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,15 +11,18 @@ class UserRepository:
         self.db = get_database()
         self.collection = self.db.users
 
-    async def create_from_firebase(self, user_data: UserCreate, firebase_uid: str) -> UserInDB:
+    async def create_with_password(self, user_data: UserCreate, password_hash: str) -> UserInDB:
         user = UserInDB(
             email=user_data.email,
             display_name=user_data.display_name,
             role=user_data.role,
-            firebase_uid=firebase_uid,
+            password_hash=password_hash,
+            expires_at=user_data.expires_at,
+            allowed_content=user_data.allowed_content,
+            profile=user_data.profile,
         )
         await self.collection.insert_one(user.model_dump())
-        logger.info(f"User created: {user.email} (firebase_uid={firebase_uid})")
+        logger.info(f"User created: {user.email}")
         return user
 
     async def get_by_email(self, email: str) -> Optional[dict]:
@@ -27,8 +31,31 @@ class UserRepository:
     async def get_by_id(self, user_id: str) -> Optional[dict]:
         return await self.collection.find_one({"id": user_id}, {"_id": 0})
 
-    async def get_by_firebase_uid(self, firebase_uid: str) -> Optional[dict]:
-        return await self.collection.find_one({"firebase_uid": firebase_uid}, {"_id": 0})
+    async def get_by_reset_token_hash(self, token_hash: str) -> Optional[dict]:
+        return await self.collection.find_one(
+            {
+                "password_reset_token_hash": token_hash,
+                "password_reset_expires": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"_id": 0},
+        )
+
+    async def set_reset_token(self, user_id: str, token_hash: str, expires: datetime) -> None:
+        await self.collection.update_one(
+            {"id": user_id},
+            {"$set": {"password_reset_token_hash": token_hash, "password_reset_expires": expires}},
+        )
+
+    async def set_password_hash(self, user_id: str, password_hash: str) -> None:
+        # Limpia el token de reset a la vez que fija la contraseña nueva -- así un token ya
+        # usado no se puede reutilizar (es de un solo uso).
+        await self.collection.update_one(
+            {"id": user_id},
+            {
+                "$set": {"password_hash": password_hash},
+                "$unset": {"password_reset_token_hash": "", "password_reset_expires": ""},
+            },
+        )
 
     async def email_exists(self, email: str) -> bool:
         return await self.collection.find_one({"email": email}) is not None

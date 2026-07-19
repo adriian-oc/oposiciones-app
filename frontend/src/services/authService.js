@@ -1,14 +1,12 @@
-import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase';
 import api from './api';
+
+const TOKEN_KEY = 'token';
 
 export const authService = {
   async login({ email, password }) {
-    await signInWithEmailAndPassword(auth, email, password);
-    // El id token ya lo añade api.js en cada request (ver interceptor); aquí solo pedimos
-    // los datos de roster (rol, allowed_content, etc.) que viven en Mongo.
-    const response = await api.get('/api/auth/me');
-    return response.data;
+    const response = await api.post('/api/auth/login', { email, password });
+    localStorage.setItem(TOKEN_KEY, response.data.access_token);
+    return authService.getCurrentUser();
   },
 
   async getCurrentUser() {
@@ -17,11 +15,14 @@ export const authService = {
   },
 
   async logout() {
-    await signOut(auth);
+    localStorage.removeItem(TOKEN_KEY);
   },
 
-  async sendPasswordReset(email) {
-    // Nadie ve/gestiona una contraseña en claro -- ni el alumno, ni el admin.
-    await sendPasswordResetEmail(auth, email);
+  async resetPassword(token, newPassword) {
+    await api.post('/api/auth/reset-password', { token, new_password: newPassword });
+  },
+
+  getToken() {
+    return localStorage.getItem(TOKEN_KEY);
   },
 };

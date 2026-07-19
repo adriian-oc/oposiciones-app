@@ -25,8 +25,7 @@ def test_admin_can_list_roster(client, admin_user):
 
 
 def test_revoked_user_is_blocked_from_using_the_api(client, admin_user, run_id):
-    from tests.conftest import _sign_in, TEST_PASSWORD
-    from firebase_admin import auth as firebase_auth
+    from tests.conftest import set_known_password, TEST_PASSWORD
 
     email = f"revoke-test-{run_id}@test.example.com"
     create = client.post(
@@ -36,9 +35,9 @@ def test_revoked_user_is_blocked_from_using_the_api(client, admin_user, run_id):
     )
     assert create.status_code == 201
     user_id = create.json()["id"]
-    firebase_uid = create.json()["firebase_uid"]
-    firebase_auth.update_user(firebase_uid, password=TEST_PASSWORD)
-    token = _sign_in(email)
+    set_known_password(client, admin_user["headers"], user_id)
+    login = client.post("/api/auth/login", json={"email": email, "password": TEST_PASSWORD})
+    token = login.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # antes de revocar, el propio usuario puede usar la API con normalidad
@@ -48,7 +47,7 @@ def test_revoked_user_is_blocked_from_using_the_api(client, admin_user, run_id):
     assert revoke.status_code == 200
     assert revoke.json()["revoked"] is True
 
-    # tras revocar, el propio token (todavía válido para Firebase) queda bloqueado por la app
+    # tras revocar, el propio token (todavía sin caducar) queda bloqueado por la app
     blocked = client.get("/api/auth/me", headers=headers)
     assert blocked.status_code == 403
 

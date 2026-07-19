@@ -22,9 +22,8 @@ class PracticalSetQuestionCreate(BaseModel):
         return v
 
 class PracticalSetCase(BaseModel):
-    """Un caso/minisupuesto dentro de un cuadernillo -- port de casoBreaks de ADOC
-    (title/desc + rango de preguntas), usado para pintar los puntos de navegación
-    por caso en el frontend (Fase 3)."""
+    """Un caso/minisupuesto dentro de un cuadernillo (title/desc + rango de preguntas),
+    usado para pintar los puntos de navegación por caso en el frontend."""
     position: int = Field(..., ge=1)
     title: str
     description: str = ""

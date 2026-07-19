@@ -18,12 +18,11 @@ const Layout = ({ children }) => {
   };
 
   // Fuente única de los enlaces del nav -- se pintan tanto en la barra de escritorio como en el
-  // menú desplegable de móvil, evitando duplicar el JSX (y el bug de solapamiento que tenía la
-  // barra fija original en pantallas estrechas, ver mejoras post-migración).
+  // menú desplegable de móvil, evitando duplicar el JSX y el riesgo de que se desincronicen.
   const navLinks = [
     { to: '/', label: 'Inicio', show: true, exact: true },
-    { to: '/exams/new', label: 'Exámenes', show: user?.role !== 'profesor' },
-    { to: '/practice', label: 'Práctica', show: user?.role !== 'profesor' },
+    { to: '/cuadernos', label: '📚 Cuadernos', show: true },
+    { to: '/progreso', label: '📊 Mi Progreso', show: user?.role !== 'profesor' },
     { to: '/calendario', label: '📅 Calendario', show: user?.role === 'student' },
     { to: '/chat', label: '💬 Mi profesor', show: user?.role === 'student' },
     { to: '/profesor', label: 'Mis Alumnos', show: user?.role === 'profesor' },
@@ -38,8 +37,9 @@ const Layout = ({ children }) => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="text-2xl font-bold text-primary-600">
-                  Opositores App
+                <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
+                  <img src="/branding/logo.png" alt="ADOC" className="h-9 w-9 object-contain" />
+                  ADOC
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">

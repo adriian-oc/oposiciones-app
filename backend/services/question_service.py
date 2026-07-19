@@ -74,8 +74,8 @@ class QuestionService:
                     detail="Invalid correct_answer index"
                 )
 
-        # Sustituye al overlay questionOverrides de ADOC: guarda el estado previo antes de
-        # aplicar el cambio, en vez de un doc de corrección aparte referenciado por hash de texto.
+        # Guarda el estado previo antes de aplicar el cambio, para poder auditar/revertir
+        # ediciones de una pregunta.
         if any(field in question_data for field in ("text", "choices", "correct_answer")):
             await self.question_repo.append_edit_history(question_id, {
                 "text": existing["text"],
@@ -103,7 +103,12 @@ class QuestionService:
 
         return await self.question_repo.delete(question_id)
 
-    async def upload_bulk_questions(self, upload_data_list: List[BulkQuestionsUpload], user_id: str) -> dict:
+    async def count_by_theme(self, content_area: str) -> dict:
+        return await self.question_repo.count_by_theme_grouped(content_area)
+
+    async def upload_bulk_questions(
+        self, upload_data_list: List[BulkQuestionsUpload], user_id: str, content_area: str = "cuad"
+    ) -> dict:
         """Upload multiple questions for multiple themes"""
         all_created_ids = []
         all_errors = []
@@ -144,7 +149,8 @@ class QuestionService:
                         choices=q_data.choices,
                         correct_answer=q_data.correct_answer,
                         difficulty=q_data.difficulty,
-                        tags=q_data.tags
+                        tags=q_data.tags,
+                        content_area=content_area,
                     )
 
                     question = await self.question_repo.create(question_create, user_id)

@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/authService';
-
-const FIREBASE_ERROR_MESSAGES = {
-  'auth/invalid-credential': 'Correo o contraseña incorrectos',
-  'auth/invalid-email': 'Correo electrónico no válido',
-  'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
-  'auth/too-many-requests': 'Demasiados intentos. Inténtalo más tarde',
-};
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,54 +13,51 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setInfo('');
     setLoading(true);
 
     try {
       await login({ email, password });
       navigate('/');
     } catch (err) {
-      setError(FIREBASE_ERROR_MESSAGES[err.code] || 'Error al iniciar sesión');
+      setError(err.response?.data?.detail || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setError('Escribe tu correo electrónico y pulsa de nuevo');
-      return;
-    }
-    setError('');
-    try {
-      await authService.sendPasswordReset(email);
-      setInfo('Te hemos enviado un correo para restablecer tu contraseña');
-    } catch (err) {
-      setError(FIREBASE_ERROR_MESSAGES[err.code] || 'No se pudo enviar el correo de restablecimiento');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-4xl font-extrabold text-gray-900">
-            Opositores App
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Inicia sesión para continuar
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl w-full text-center mb-10">
+        <img src="/branding/banner.png" alt="ADOC - Academia de Oposiciones" className="mx-auto max-w-full h-auto rounded-lg shadow-md mb-6" />
+        <p className="text-gray-700 max-w-lg mx-auto">
+          Prepárate con temario actualizado, supuestos prácticos y seguimiento personalizado de un
+          profesor. ¿Quieres opositar con nosotros o unirte como docente?
+        </p>
+        <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/solicitar-acceso"
+            className="px-5 py-2.5 bg-primary-600 text-white rounded-md font-medium hover:bg-primary-700"
+          >
+            Quiero preparar mi oposición
+          </Link>
+          <Link
+            to="/trabaja-con-nosotros"
+            className="px-5 py-2.5 bg-white text-primary-700 border border-primary-300 rounded-md font-medium hover:bg-primary-50"
+          >
+            Quiero dar clases
+          </Link>
         </div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8">
+        <p className="text-center text-sm text-gray-600">
+          ¿Ya tienes cuenta? Inicia sesión
+        </p>
         <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
           <form className="space-y-6" onSubmit={handleSubmit} data-testid="login-form">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded relative" role="alert" data-testid="error-message">
                 <span className="block sm:inline">{error}</span>
-              </div>
-            )}
-            {info && (
-              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded relative" role="status">
-                <span className="block sm:inline">{info}</span>
               </div>
             )}
             <div>
@@ -116,17 +104,9 @@ const Login = () => {
             </div>
           </form>
           <div className="mt-4 text-center space-y-2">
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className="block w-full text-sm text-primary-600 hover:text-primary-500"
-              data-testid="forgot-password-link"
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-            <Link to="/solicitar-acceso" className="block text-sm text-gray-500 hover:text-gray-700">
-              ¿Todavía no tienes cuenta? Solicita acceso
-            </Link>
+            <p className="text-sm text-gray-500">
+              ¿No puedes entrar? Contacta con tu profesor o con administración.
+            </p>
           </div>
         </div>
       </div>

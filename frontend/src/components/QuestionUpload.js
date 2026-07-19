@@ -3,6 +3,7 @@ import { questionService } from '../services/questionService';
 
 const QuestionUpload = ({ onUploadSuccess }) => {
   const [uploadType, setUploadType] = useState('bulk'); // 'bulk' or 'practical'
+  const [contentArea, setContentArea] = useState('cuad');
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -53,7 +54,7 @@ const QuestionUpload = ({ onUploadSuccess }) => {
     try {
       let uploadResult;
       if (uploadType === 'bulk') {
-        uploadResult = await questionService.uploadBulkQuestions(file);
+        uploadResult = await questionService.uploadBulkQuestions(file, contentArea);
       } else {
         uploadResult = await questionService.uploadPracticalSet(file);
       }
@@ -108,6 +109,23 @@ const QuestionUpload = ({ onUploadSuccess }) => {
           </label>
         </div>
       </div>
+
+      {/* Content Area Selection (solo aplica a "Preguntas por tema") */}
+      {uploadType === 'bulk' && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Área de contenido</label>
+          <select
+            value={contentArea}
+            onChange={(e) => setContentArea(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            data-testid="content-area-select"
+          >
+            <option value="cuad">📗 Cuadernillos de Ejercicios</option>
+            <option value="ttesp">✅ Test de Teoría Parte Específica</option>
+            <option value="ttgen">✅ Test de Teoría Parte General</option>
+          </select>
+        </div>
+      )}
 
       {/* Download Template Button */}
       <div className="mb-4">

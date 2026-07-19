@@ -6,16 +6,17 @@ import PrivateRoute from './components/PrivateRoute';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Cuadernos from './pages/Cuadernos';
+import Progress from './pages/Progress';
 import Admin from './pages/Admin';
-import ExamGenerator from './pages/ExamGenerator';
-import Practice from './pages/Practice';
 import TakeExam from './pages/TakeExam';
 import ExamResults from './pages/ExamResults';
-import ExamHistory from './pages/ExamHistory';
 import Analytics from './pages/Analytics';
 import ProfesorDashboard from './pages/ProfesorDashboard';
 import Chat from './pages/Chat';
 import AccessRequest from './pages/AccessRequest';
+import TeacherApplication from './pages/TeacherApplication';
+import ResetPassword from './pages/ResetPassword';
 import StudyCalendar from './pages/StudyCalendar';
 
 const AppRoutes = () => {
@@ -26,6 +27,8 @@ const AppRoutes = () => {
       {/* Public routes */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
       <Route path="/solicitar-acceso" element={<AccessRequest />} />
+      <Route path="/trabaja-con-nosotros" element={<TeacherApplication />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Private routes */}
       <Route
@@ -42,28 +45,37 @@ const AppRoutes = () => {
       />
       
       <Route
+        path="/cuadernos"
+        element={
+          <PrivateRoute>
+            <Cuadernos />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/progreso"
+        element={
+          <PrivateRoute>
+            <Progress />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/progreso/:userId"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'profesor']}>
+            <Progress />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
         path="/admin"
         element={
           <PrivateRoute allowedRoles={['admin', 'curator']}>
             <Admin />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/exams/new"
-        element={
-          <PrivateRoute>
-            <ExamGenerator />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/practice"
-        element={
-          <PrivateRoute>
-            <Practice />
           </PrivateRoute>
         }
       />
@@ -82,15 +94,6 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <ExamResults />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/exams/history"
-        element={
-          <PrivateRoute>
-            <ExamHistory />
           </PrivateRoute>
         }
       />
@@ -135,6 +138,15 @@ const AppRoutes = () => {
         path="/calendario"
         element={
           <PrivateRoute allowedRoles={['student']}>
+            <StudyCalendar />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/calendario/:userId"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'profesor']}>
             <StudyCalendar />
           </PrivateRoute>
         }

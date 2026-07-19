@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, File, UploadFile, HTTPException, status
+from fastapi import APIRouter, Depends, Query, File, Form, UploadFile, HTTPException, status
 from typing import List, Optional
 from models.question import (
     QuestionCreate, QuestionResponse, ListBulkQuestionsUpload, PracticalSetUpload
@@ -24,6 +24,16 @@ async def get_questions(
     question_service = get_question_service()
     questions = await question_service.get_questions(theme_id, limit, skip, content_area)
     return [QuestionResponse(**q) for q in questions]
+
+@router.get("/counts")
+async def get_question_counts(
+    content_area: str = Query(..., description="Área de contenido: ttesp, ttgen, cuad..."),
+    current_user: dict = Depends(get_current_user)
+):
+    """Nº de preguntas cargadas por tema para un área -- usado por Cuadernos.js para decidir si
+    un tema de Test de Teoría es practicable ('Practicar') o sigue 'Próximamente'."""
+    question_service = get_question_service()
+    return await question_service.count_by_theme(content_area)
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
 async def create_question(
@@ -69,17 +79,18 @@ async def delete_question(
 @router.post("/upload/bulk")
 async def upload_bulk_questions(
     file: UploadFile = File(...),
+    content_area: str = Form("cuad"),
     current_user: dict = Depends(require_role(["admin", "curator"]))
 ):
     """Upload multiple questions from JSON file"""
     try:
         content = await file.read()
         data = json.loads(content)
-        
+
         upload_data = ListBulkQuestionsUpload(**data)
         question_service = get_question_service()
-        result = await question_service.upload_bulk_questions(upload_data.uploads, current_user["id"])
-        
+        result = await question_service.upload_bulk_questions(upload_data.uploads, current_user["id"], content_area)
+
         return result
     except json.JSONDecodeError:
         raise HTTPException(

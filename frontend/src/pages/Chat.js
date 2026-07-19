@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { messageService } from '../services/messageService';
 import { useAuth } from '../context/AuthContext';
@@ -7,12 +7,15 @@ import { useAuth } from '../context/AuthContext';
 const Chat = () => {
   const { studentId: studentIdParam } = useParams();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   // El alumno chatea con su propio hilo (no necesita studentId en la URL); el profesor/admin
   // usan el studentId del alumno que están viendo.
   const studentId = studentIdParam || user.id;
 
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
+  // Prellenado desde AskTeacherButton (pregunta fallada en un examen) -- solo la primera vez
+  // que se monta el componente, no en cada re-render.
+  const [text, setText] = useState(() => searchParams.get('prefill') || '');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);

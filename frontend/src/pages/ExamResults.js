@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { examService } from "../services/examService";
+import AskTeacherButton from "../components/AskTeacherButton";
 
 const ExamResults = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
 
   const loadResults = useCallback(async () => {
     try {
@@ -24,6 +26,18 @@ const ExamResults = () => {
   useEffect(() => {
     loadResults();
   }, [loadResults]);
+
+  const handleRetryFailures = async () => {
+    setRetrying(true);
+    try {
+      const newAttempt = await examService.retryFailures(attemptId);
+      navigate(`/exams/take/${newAttempt.id}`);
+    } catch (error) {
+      alert("Error al repasar los fallos: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -46,7 +60,8 @@ const ExamResults = () => {
   }
 
   const { details } = attempt;
-  const scorePercentage = (details.final_score / 70) * 100;
+  const scale = details.scale || 70;
+  const scorePercentage = (details.final_score / scale) * 100;
   const isPassed = scorePercentage >= 50; // Assuming 50% is pass threshold
 
   return (
@@ -69,7 +84,7 @@ const ExamResults = () => {
               }`}
               data-testid="final-score"
             >
-              {details.final_score.toFixed(2)} / 70
+              {details.final_score.toFixed(2)} / {scale}
             </div>
             <div className="text-2xl text-gray-600 mt-2">
               {scorePercentage.toFixed(1)}%
@@ -271,6 +286,12 @@ const ExamResults = () => {
                         verde.
                       </div>
                     )}
+
+                  {result.status === "incorrect" && (
+                    <div className="mt-3">
+                      <AskTeacherButton questionText={result.question_text} />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -279,12 +300,22 @@ const ExamResults = () => {
 
         {/* Actions */}
         <div className="flex justify-center space-x-4">
+          {details.incorrect > 0 && (
+            <button
+              onClick={handleRetryFailures}
+              disabled={retrying}
+              className="px-6 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 disabled:opacity-50"
+              data-testid="retry-failures-button"
+            >
+              {retrying ? "Preparando..." : `🔁 Repasar ${details.incorrect} fallo${details.incorrect === 1 ? "" : "s"}`}
+            </button>
+          )}
           <button
-            onClick={() => navigate("/exams/new")}
+            onClick={() => navigate("/cuadernos")}
             className="px-6 py-3 bg-primary-600 text-white rounded-md font-medium hover:bg-primary-700"
             data-testid="new-exam-button"
           >
-            Nuevo Examen
+            Volver a Cuadernos
           </button>
           <button
             onClick={() => navigate("/")}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from typing import List
 
 from models.user import UserCreate, UserResponse, UserUpdate
@@ -24,7 +24,7 @@ async def create_student(
     user_data: UserCreate,
     current_user: dict = Depends(require_role(["admin"])),
 ):
-    """Alta de alumno o staff: crea la cuenta en Firebase Auth + el roster en Mongo."""
+    """Alta de alumno o staff: crea el roster en Mongo."""
     return await get_admin_service().create_student(user_data)
 
 
@@ -33,11 +33,7 @@ async def send_password_reset(
     user_id: str,
     current_user: dict = Depends(require_role(["admin"])),
 ):
-    admin_service = get_admin_service()
-    user = await admin_service.user_repo.get_by_id(user_id)
-    if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    link = admin_service.send_password_reset(user["email"])
+    link = await get_admin_service().send_password_reset(user_id)
     return {"reset_link": link}
 
 
@@ -73,7 +69,7 @@ async def mark_reviewed(
     user_id: str,
     current_user: dict = Depends(require_role(["admin", "profesor"])),
 ):
-    """Limpia el badge de novedades para ESTE miembro del staff (last_reviewed_by[staff_id]) --
-    port de la lógica de viewStudentAnalysis en ADOC (CLAUDE.md)."""
+    """Limpia el badge de novedades para ESTE miembro del staff (last_reviewed_by[staff_id]),
+    sin afectar al badge de otros profesores/admins que también vean al mismo alumno."""
     await get_admin_service().mark_reviewed(user_id, current_user["id"], is_admin=current_user["role"] == "admin")
     return {"message": "ok"}

@@ -1,9 +1,10 @@
 import api from './api';
 
 export const questionService = {
-  async getQuestions(themeId = null, limit = 100, skip = 0) {
+  async getQuestions(themeId = null, limit = 100, skip = 0, contentArea = null) {
     const params = { limit, skip };
     if (themeId) params.theme_id = themeId;
+    if (contentArea) params.content_area = contentArea;
     const response = await api.get('/api/questions', { params });
     return response.data;
   },
@@ -23,14 +24,20 @@ export const questionService = {
     return response.data;
   },
 
-  async uploadBulkQuestions(file) {
+  async uploadBulkQuestions(file, contentArea = 'cuad') {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('content_area', contentArea);
     const response = await api.post('/api/questions/upload/bulk', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  async getCounts(contentArea) {
+    const response = await api.get('/api/questions/counts', { params: { content_area: contentArea } });
     return response.data;
   },
 

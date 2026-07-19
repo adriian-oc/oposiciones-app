@@ -11,13 +11,22 @@ export const examService = {
     return response.data;
   },
 
-  async startAttempt(examId) {
-    const response = await api.post('/api/exams/start', { exam_id: examId });
+  async startAttempt(examId, liveCorrection = false) {
+    const response = await api.post('/api/exams/start', { exam_id: examId, live_correction: liveCorrection });
     return response.data;
   },
 
-  async startPractice(practicalSetId) {
-    const response = await api.post(`/api/exams/practice/${practicalSetId}/start`);
+  async startPractice(practicalSetId, liveCorrection = false) {
+    const response = await api.post(`/api/exams/practice/${practicalSetId}/start`, null, {
+      params: { live_correction: liveCorrection },
+    });
+    return response.data;
+  },
+
+  async startTheoryPractice(areaId, themeId, liveCorrection = false) {
+    const response = await api.post(`/api/exams/theory/${areaId}/${themeId}/start`, null, {
+      params: { live_correction: liveCorrection },
+    });
     return response.data;
   },
 
@@ -39,8 +48,18 @@ export const examService = {
     return response.data;
   },
 
+  async retryFailures(attemptId) {
+    const response = await api.post(`/api/exams/attempts/${attemptId}/retry-failures`);
+    return response.data;
+  },
+
   async getHistory(limit = 50) {
     const response = await api.get(`/api/exams/history?limit=${limit}`);
+    return response.data;
+  },
+
+  async getHistoryFor(userId, limit = 50) {
+    const response = await api.get(`/api/exams/history/${userId}?limit=${limit}`);
     return response.data;
   },
 };

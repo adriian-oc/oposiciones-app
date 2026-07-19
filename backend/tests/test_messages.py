@@ -42,10 +42,11 @@ def test_profesor_not_assigned_cannot_read_thread(client, admin_user, student_us
     )
     assert create.status_code == 201
 
-    from tests.conftest import _sign_in, TEST_PASSWORD
-    from firebase_admin import auth as firebase_auth
-    firebase_auth.update_user(create.json()["firebase_uid"], password=TEST_PASSWORD)
-    token = _sign_in(create.json()["email"])
+    from tests.conftest import set_known_password, TEST_PASSWORD
+    user_id = create.json()["id"]
+    set_known_password(client, admin_user["headers"], user_id)
+    login = client.post("/api/auth/login", json={"email": create.json()["email"], "password": TEST_PASSWORD})
+    token = login.json()["access_token"]
 
     r = client.get(f"/api/messages/{student_user['id']}", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 403

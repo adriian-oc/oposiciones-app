@@ -16,6 +16,11 @@ export const studyCalendarService = {
     return response.data;
   },
 
+  async getCalendarFor(userId, days = 14) {
+    const response = await api.get(`/api/study-calendar/${userId}`, { params: { days } });
+    return response.data;
+  },
+
   async completeEntry(entryId) {
     const response = await api.post(`/api/study-calendar/entries/${entryId}/complete`);
     return response.data;

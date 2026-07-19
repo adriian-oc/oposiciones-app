@@ -11,8 +11,8 @@ class MessageService:
         self.user_repo = UserRepository()
 
     async def _authorize(self, current_user: dict, student_id: str) -> None:
-        """Mirror de isAssignedProfesor() en firestore.rules de ADOC: el alumno solo ve/escribe
-        su propio hilo; el profesor solo el de sus alumnos asignados; el admin, cualquiera."""
+        """El alumno solo ve/escribe su propio hilo; el profesor solo el de sus alumnos
+        asignados; el admin, cualquiera."""
         role = current_user["role"]
         if role == "admin":
             return

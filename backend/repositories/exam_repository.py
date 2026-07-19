@@ -60,3 +60,47 @@ class ExamRepository:
             .sort("started_at", -1)
             .to_list(length=None)
         )
+
+    async def get_attempts_by_user_and_content_unit(self, user_id: str, content_unit_key: str) -> List[dict]:
+        """Historial de intentos de práctica de una unidad concreta (para el trend de Mi Estudio)."""
+        return await (
+            self.attempt_collection.find(
+                {"user_id": user_id, "content_unit_key": content_unit_key}, {"_id": 0}
+            )
+            .sort("started_at", 1)
+            .to_list(length=None)
+        )
+
+    async def get_finished_practice_attempts(self, user_id: str) -> List[dict]:
+        """Todos los intentos de práctica terminados de un alumno, para las stat cards
+        acumuladas de Mi Progreso (progress_service.get_summary)."""
+        return await (
+            self.attempt_collection.find(
+                {"user_id": user_id, "mode": "practice", "finished_at": {"$ne": None}}, {"_id": 0}
+            )
+            .to_list(length=None)
+        )
+
+    async def get_practice_stats_by_content_unit(self, user_ids: Optional[List[str]] = None) -> List[dict]:
+        """Nota media (ya escalada -- 15 o 70 según details.scale, mismo cálculo que
+        ExamService._calculate_score, penalización por fallo incluida) y nº de intentos por
+        content_unit_key, agregado sobre TODOS los alumnos (user_ids=None) o un subconjunto
+        (alumnos asignados a un profesor) -- base del árbol de Refuerzo. Reutiliza el mismo
+        criterio de scope que analytics_repository.get_top_failed_questions."""
+        match: dict = {"mode": "practice", "finished_at": {"$ne": None}}
+        if user_ids is not None:
+            match["user_id"] = {"$in": user_ids}
+        pipeline = [
+            {"$match": match},
+            {
+                "$group": {
+                    "_id": "$content_unit_key",
+                    "avg_score": {"$avg": "$details.final_score"},
+                    "scale": {"$first": "$details.scale"},
+                    "attempts_count": {"$sum": 1},
+                    "distinct_students": {"$addToSet": "$user_id"},
+                }
+            },
+            {"$addFields": {"distinct_students": {"$size": "$distinct_students"}}},
+        ]
+        return await self.attempt_collection.aggregate(pipeline).to_list(length=None)

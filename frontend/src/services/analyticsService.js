@@ -37,13 +37,24 @@ const analyticsService = {
     }
   },
 
-  // Panel de refuerzo (admin/profesor): preguntas más falladas
+  // Panel de refuerzo (admin/profesor): preguntas más falladas. themeId='' filtra a Supuestos
+  // Prácticos (sin tema real); themeId=null/undefined = sin filtro (todos los temas).
   getTopFailedQuestions: async (themeId = null, limit = 20) => {
     try {
       const params = new URLSearchParams();
-      if (themeId) params.append('theme_id', themeId);
+      if (themeId !== null && themeId !== undefined) params.append('theme_id', themeId);
       params.append('limit', limit);
       const response = await api.get(`/api/analytics/top-failures?${params}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Panel de refuerzo (admin/profesor): nota media + intentos por unidad de contenido
+  getPracticeStats: async () => {
+    try {
+      const response = await api.get('/api/analytics/practice-stats');
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

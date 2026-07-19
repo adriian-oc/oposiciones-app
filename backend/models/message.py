@@ -16,7 +16,7 @@ class MessageCreate(BaseModel):
 
 class MessageInDB(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    student_id: str  # clave del hilo -- 1 hilo por alumno, igual que messages/{id} en ADOC
+    student_id: str  # clave del hilo -- 1 hilo por alumno (alumno + su profesor/admin)
     sender_id: str
     text: str
     created_at: datetime = Field(default_factory=datetime.utcnow)

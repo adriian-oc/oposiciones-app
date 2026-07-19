@@ -10,6 +10,8 @@ from models.study_calendar import (
 )
 from repositories.study_calendar_repository import StudyCalendarRepository
 from repositories.practical_set_repository import PracticalSetRepository
+from repositories.progress_repository import ProgressRepository
+from repositories.theme_repository import ThemeRepository
 from services.analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
@@ -87,13 +89,82 @@ class StudyCalendarService:
                     title=item["title"],
                     allocated_minutes=BLOCK_MINUTES,
                     priority_reason=item["priority_reason"],
+                    kind=item["kind"],
                 ))
 
         await self.repo.replace_future_pending_entries(user_id, today.isoformat(), entries)
         return len(entries)
 
     async def _build_priority_queue(self, user_id: str) -> List[dict]:
-        """Construye la cola de 'qué estudiar', repitiendo los temas más débiles para que
+        """Combina repasos ya vencidos (repetición espaciada real, ver ProgressService._sm2_update)
+        con contenido nuevo o débil, intercalados ~2:1 -- prioriza lo que está a punto de
+        olvidarse sin dejar de introducir material nuevo (mismo equilibrio entre "reviews" y
+        "new cards" por día que usan las apps de repetición espaciada)."""
+        review_items = await self._build_review_queue(user_id)
+        reviewed_keys = {i["content_unit_key"] for i in review_items}
+        new_items = await self._build_new_queue(user_id, exclude_keys=reviewed_keys)
+
+        if not review_items:
+            return new_items
+        if not new_items:
+            return review_items
+
+        queue: List[dict] = []
+        ri = ni = 0
+        while ri < len(review_items) or ni < len(new_items):
+            for _ in range(2):
+                if ri < len(review_items):
+                    queue.append(review_items[ri])
+                    ri += 1
+            if ni < len(new_items):
+                queue.append(new_items[ni])
+                ni += 1
+        return queue
+
+    async def _build_review_queue(self, user_id: str) -> List[dict]:
+        """Unidades cuyo próximo repaso (SM-2) ya ha vencido, más atrasadas primero."""
+        progress = await ProgressRepository().get_by_user(user_id)
+        if not progress:
+            return []
+        today = date.today().isoformat()
+        due = [
+            (key, score) for key, score in (progress.get("content_scores") or {}).items()
+            if score.get("next_review_date") and score["next_review_date"] <= today
+        ]
+        due.sort(key=lambda kv: kv[1]["next_review_date"])
+
+        items: List[dict] = []
+        for key, score in due:
+            resolved = await self._resolve_content_unit(key)
+            if not resolved:
+                continue
+            interval = score.get("interval_days", 1)
+            items.append({
+                "content_unit_key": key,
+                "theme_id": resolved["theme_id"],
+                "title": resolved["title"],
+                "priority_reason": f"Repaso programado -- te toca cada {interval} día{'s' if interval != 1 else ''}",
+                "kind": "review",
+            })
+        return items
+
+    async def _resolve_content_unit(self, content_unit_key: str) -> Optional[dict]:
+        """content_unit_key es el id de un practical_set (Cuadernillos/Supuestos), o
+        '<area_id>:<theme_id>' para una práctica de Test de Teoría (ver ExamService)."""
+        if ":" in content_unit_key:
+            area_id, theme_id = content_unit_key.split(":", 1)
+            theme = await ThemeRepository().get_by_id(theme_id)
+            if not theme:
+                return None
+            area_label = "Test de Teoría" if area_id in ("ttesp", "ttgen") else area_id
+            return {"theme_id": theme_id, "title": f"{area_label} — {theme['name']}"}
+        ps = await self.practical_set_repo.get_by_id(content_unit_key)
+        if not ps:
+            return None
+        return {"theme_id": (ps["theme_ids"][0] if ps["theme_ids"] else None), "title": ps["title"]}
+
+    async def _build_new_queue(self, user_id: str, exclude_keys: set) -> List[dict]:
+        """Contenido nuevo o con accuracy baja, repitiendo los temas más débiles para que
         aparezcan más veces al hacer round-robin sobre los días disponibles."""
         queue: List[dict] = []
         used_ps_ids: set = set()
@@ -111,12 +182,15 @@ class StudyCalendarService:
             repeats = min(MAX_REPEATS_PER_CANDIDATE, max(1, item.recommended_practice_count // 5))
             for ps in practical_sets:
                 used_ps_ids.add(ps["id"])
+                if ps["id"] in exclude_keys:
+                    continue
                 for _ in range(repeats):
                     queue.append({
                         "content_unit_key": ps["id"],
                         "theme_id": item.theme_id,
                         "title": ps["title"],
                         "priority_reason": f"Tema con más fallos ({round(item.accuracy_rate)}% de acierto)",
+                        "kind": "new",
                     })
 
         # Alumno nuevo sin fallos todavía, o pocos temas débiles: completar con cobertura general
@@ -124,13 +198,14 @@ class StudyCalendarService:
         if len(queue) < DAYS_AHEAD:
             all_sets = await self.practical_set_repo.get_all(skip=0, limit=200)
             for ps in all_sets:
-                if ps["id"] in used_ps_ids:
+                if ps["id"] in used_ps_ids or ps["id"] in exclude_keys:
                     continue
                 queue.append({
                     "content_unit_key": ps["id"],
                     "theme_id": (ps["theme_ids"][0] if ps["theme_ids"] else None),
                     "title": ps["title"],
                     "priority_reason": "Repaso general",
+                    "kind": "new",
                 })
 
         return queue

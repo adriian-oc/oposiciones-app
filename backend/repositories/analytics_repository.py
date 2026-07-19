@@ -130,9 +130,11 @@ class AnalyticsRepository:
     ) -> List[Dict]:
         """Agrega analytics_failures por question_id -- base del panel de refuerzo de staff.
         user_ids=None significa 'todos los alumnos' (vista de admin); una lista concreta scopea
-        a los alumnos asignados de un profesor."""
+        a los alumnos asignados de un profesor. theme_id='' filtra a Supuestos Prácticos (sin
+        tema real, ver record_attempt_results) -- por eso se comprueba 'is not None' y no
+        'truthy', que descartaría ese caso."""
         match: Dict = {}
-        if theme_id:
+        if theme_id is not None:
             match["theme_id"] = theme_id
         if user_ids is not None:
             match["user_id"] = {"$in": user_ids}

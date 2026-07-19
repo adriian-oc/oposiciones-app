@@ -1,5 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
+from pymongo.errors import OperationFailure
 from config.settings import settings
 import logging
 
@@ -17,9 +18,17 @@ async def connect_to_mongo():
         Database.client = AsyncIOMotorClient(settings.mongo_url)
         Database.db = Database.client.get_database(name=settings.mongo_db_name)
 
+        # Índice heredado de cuando la identidad se resolvía por firebase_uid -- se elimina
+        # explícitamente porque, al no ser sparse, un índice único sobre un campo que ya no se
+        # rellena rompería la creación del segundo usuario nuevo (Mongo trata el campo ausente
+        # como null, y un índice único solo admite un documento con null).
+        try:
+            await Database.db.users.drop_index("firebase_uid_1")
+        except OperationFailure:
+            pass
+
         # Create indexes
         await Database.db.users.create_index([("email", ASCENDING)], unique=True)
-        await Database.db.users.create_index([("firebase_uid", ASCENDING)], unique=True)
         await Database.db.themes.create_index([("code", ASCENDING)], unique=True)
         await Database.db.questions.create_index([("theme_id", ASCENDING)])
         await Database.db.questions.create_index([("created_at", DESCENDING)])
@@ -42,6 +51,7 @@ async def connect_to_mongo():
         await Database.db.study_preferences.create_index([("user_id", ASCENDING)], unique=True)
         await Database.db.study_calendar.create_index([("user_id", ASCENDING), ("date", ASCENDING)])
         await Database.db.study_calendar.create_index([("id", ASCENDING)], unique=True)
+        await Database.db.users.create_index([("password_reset_token_hash", ASCENDING)])
 
         logger.info("Connected to MongoDB successfully")
     except Exception as e:

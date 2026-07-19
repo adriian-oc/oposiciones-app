@@ -32,12 +32,18 @@ def test_practice_flow_scoring_and_progress(client, admin_user, student_user):
     assert len(attempt["exam"]["cases"]) == 2
     questions = attempt["exam"]["questions"]
     assert len(questions) == 4
+    # Regresión del leak de seguridad de la ronda 5: el examen que recibe el alumno antes de
+    # contestar no debe traer correct_answer.
+    assert all("correct_answer" not in q for q in questions)
 
     for q in questions:
+        # Las 4 preguntas del practical_set de prueba tienen correct_answer=1 (ver
+        # _make_practical_set) -- no se puede leer del payload del examen porque ya no se
+        # expone, así que se usa el valor conocido directamente.
         r = client.post(
             f"/api/exams/attempts/{attempt['id']}/answer",
             headers=student_user["headers"],
-            json={"question_id": q["question_id"], "selected_answer": q["correct_answer"]},
+            json={"question_id": q["question_id"], "selected_answer": 1},
         )
         assert r.status_code == 200
 
@@ -46,7 +52,7 @@ def test_practice_flow_scoring_and_progress(client, admin_user, student_user):
     details = finish.json()["details"]
     assert details["correct"] == 4
     assert details["total_questions"] == 4
-    assert finish.json()["score"] == 70.0  # 4/4 correctas, escala 70 (no es SIMULACRO)
+    assert finish.json()["score"] == 15.0  # 4/4 correctas, escala 15 (tipo PRACTICAL -- Supuestos/Cuadernillos)
 
     progress = client.get("/api/progress/me", headers=student_user["headers"]).json()
     assert progress["content_scores"][ps_id]["correct"] == 4
