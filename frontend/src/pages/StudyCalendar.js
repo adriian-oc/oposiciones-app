@@ -32,10 +32,12 @@ const StudyCalendar = () => {
     setLoading(true);
     try {
       if (isOther) {
-        const [calendar, roster] = await Promise.all([
+        const [prefs, calendar, roster] = await Promise.all([
+          studyCalendarService.getPreferencesFor(targetUserId),
           studyCalendarService.getCalendarFor(targetUserId, 14),
           adminService.listStudents(),
         ]);
+        setHours(prefs.hours_per_day);
         setEntries(calendar);
         setViewedUser(roster.find((u) => u.id === targetUserId) || null);
       } else {
@@ -61,7 +63,11 @@ const StudyCalendar = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await studyCalendarService.setPreferences(hours);
+      if (isOther) {
+        await studyCalendarService.setPreferencesFor(targetUserId, hours);
+      } else {
+        await studyCalendarService.setPreferences(hours);
+      }
       await load();
     } catch (error) {
       alert('Error al guardar las preferencias: ' + (error.response?.data?.detail || error.message));
@@ -71,7 +77,11 @@ const StudyCalendar = () => {
   };
 
   const handleComplete = async (entryId) => {
-    await studyCalendarService.completeEntry(entryId);
+    if (isOther) {
+      await studyCalendarService.completeEntryFor(targetUserId, entryId);
+    } else {
+      await studyCalendarService.completeEntry(entryId);
+    }
     setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, status: 'done' } : e)));
   };
 
@@ -118,45 +128,45 @@ const StudyCalendar = () => {
           )}
         </div>
 
-        {!isOther && (
-          <form onSubmit={handleSavePreferences} className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Horas disponibles por día</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {DAY_ORDER.map((day) => (
-                <div key={day}>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">{DAY_LABELS[day]}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="12"
-                    step="0.5"
-                    value={hours[day] ?? 0}
-                    onChange={(e) => setHours({ ...hours, [day]: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm text-gray-500">Total semanal: {totalWeeklyHours}h</span>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
-              >
-                {saving ? 'Guardando...' : 'Guardar y generar calendario'}
-              </button>
-            </div>
-          </form>
-        )}
+        <form onSubmit={handleSavePreferences} className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">
+            {isOther ? `Horas disponibles por día de ${viewedUser?.display_name || 'este alumno'}` : 'Horas disponibles por día'}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {DAY_ORDER.map((day) => (
+              <div key={day}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{DAY_LABELS[day]}</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="12"
+                  step="0.5"
+                  value={hours[day] ?? 0}
+                  onChange={(e) => setHours({ ...hours, [day]: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm text-gray-500">Total semanal: {totalWeeklyHours}h</span>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : 'Guardar y generar calendario'}
+            </button>
+          </div>
+        </form>
 
         <div className="space-y-4">
           {Object.keys(entriesByDate).length === 0 ? (
             <p className="text-center text-gray-500 py-8 bg-white rounded-lg shadow-md">
-              {isOther
-                ? 'Este alumno todavía no tiene calendario generado.'
-                : totalWeeklyHours === 0
-                ? 'Configura tus horas disponibles arriba para generar tu calendario.'
+              {totalWeeklyHours === 0
+                ? isOther
+                  ? 'Configura arriba las horas disponibles de este alumno para generarle un calendario.'
+                  : 'Configura tus horas disponibles arriba para generar tu calendario.'
                 : 'Todavía no hay contenido suficiente para generar el calendario.'}
             </p>
           ) : (
@@ -176,14 +186,12 @@ const StudyCalendar = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {!isOther && (
-                          <input
-                            type="checkbox"
-                            checked={entry.status === 'done'}
-                            onChange={() => entry.status !== 'done' && handleComplete(entry.id)}
-                            className="flex-shrink-0"
-                          />
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={entry.status === 'done'}
+                          onChange={() => entry.status !== 'done' && handleComplete(entry.id)}
+                          className="flex-shrink-0"
+                        />
                         <div className="min-w-0">
                           <div className={`text-sm font-medium truncate flex items-center gap-1.5 ${entry.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                             <span

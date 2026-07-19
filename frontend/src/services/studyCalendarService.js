@@ -30,4 +30,19 @@ export const studyCalendarService = {
     const response = await api.post('/api/study-calendar/regenerate');
     return response.data;
   },
+
+  async getPreferencesFor(userId) {
+    const response = await api.get(`/api/study-calendar/${userId}/preferences`);
+    return response.data;
+  },
+
+  async setPreferencesFor(userId, hoursPerDay) {
+    const response = await api.put(`/api/study-calendar/${userId}/preferences`, { hours_per_day: hoursPerDay });
+    return response.data;
+  },
+
+  async completeEntryFor(userId, entryId) {
+    const response = await api.post(`/api/study-calendar/${userId}/entries/${entryId}/complete`);
+    return response.data;
+  },
 };
