@@ -96,7 +96,7 @@ const Cuadernos = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, highlightThemeId]);
 
   useEffect(() => {
     load();
