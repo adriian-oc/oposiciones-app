@@ -368,6 +368,24 @@ entra al panel de admin. Las 11 cuentas reales del roster ya existen también en
 producción (contraseñas rotadas tras el incidente de seguridad de arriba — pedir al usuario que
 las comparta si hace falta operar sobre esas cuentas, nunca reconstruirlas escribiéndolas aquí).
 
+**Segundo bug real, más gordo**: el primer despliegue a producción solo copió cuentas de
+usuario — nadie migró contenido (`practical_sets`/Cuadernillos, `questions`/Test de Teoría,
+`content_units`). Producción arrancó con 0 documentos en esas 3 colecciones (`themes` sí tenía
+38, porque `ThemeService.seed_initial_themes()` los autogenera en cada arranque del backend si
+la colección está vacía — `backend/server.py`, hook de `startup_event`). Cuadernos aparecía
+completamente vacío para cualquier rol. Al copiar el contenido de la Mongo local a Atlas se
+pisó otro bug más sutil: **cada entorno genera sus propios UUID aleatorios para los temas al
+autosembrarlos** (mismos 38 `code` en local y producción, pero `id` distintos) — así que los
+`theme_ids`/`theme_id` copiados tal cual desde local no casaban con ningún tema en producción,
+y todo seguía saliendo "Próximamente" aunque los documentos ya existieran. Solución: copiar
+`practical_sets`/`questions`/`content_units` remapeando `theme_id(s)` por `code` (local id →
+code → id de producción para ese mismo code), no por id directo. **Lección para cualquier
+migración futura de contenido entre entornos**: nunca copiar `theme_id`/`theme_ids` en crudo
+entre bases distintas — siempre remapear por `code`. Verificado a mano: profesor y alumno ven
+ahora el mismo árbol completo en Cuadernos (Cuadernillos temas 2-12 y Prestaciones RGSS con
+"Practicar", Test de Teoría Parte General temas 1-11 con "Practicar", resto "Próximamente"
+igual que en local), y arrancar un examen real (Tema 1, 29 preguntas) funciona en producción.
+
 **Instrucción permanente para este repo**: el usuario pidió subir siempre todos los cambios a
 GitHub sin esperar confirmación previa (a diferencia de la política general de pedir permiso
 antes de cada `git push`) — ver memoria `feedback_adoc_always_push`. Esto NO se extiende a
