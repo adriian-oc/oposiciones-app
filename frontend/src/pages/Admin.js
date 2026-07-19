@@ -14,7 +14,8 @@ import { openGmailCompose } from '../utils/gmailCompose';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'questions', 'roster', 'requests', 'failures', 'documents'
+  // null = panel de tarjetas; si no, la sección abierta: 'upload', 'questions', 'roster', 'requests', 'failures', 'documents'
+  const [activeTab, setActiveTab] = useState(null);
 
   // Roster (Fase 4)
   const [roster, setRoster] = useState([]);
@@ -81,13 +82,14 @@ const Admin = () => {
     if (activeTab === 'roster') {
       loadRoster();
     }
-    if (activeTab === 'requests') {
-      loadAccessRequests();
-    }
-    if (activeTab === 'documents') {
-      loadPendingDocs();
-    }
-  }, [activeTab, loadRoster, loadAccessRequests, loadPendingDocs]);
+  }, [activeTab, loadRoster]);
+
+  // Solicitudes y documentos pendientes se cargan siempre al entrar al panel (no solo al abrir su
+  // tarjeta) para poder mostrar el aviso de pendientes en la propia tarjeta antes de pinchar.
+  useEffect(() => {
+    loadAccessRequests();
+    loadPendingDocs();
+  }, [loadAccessRequests, loadPendingDocs]);
 
   const handleReviewDocument = (doc, newStatus) => {
     if (newStatus === 'rejected') {
@@ -221,87 +223,55 @@ const Admin = () => {
           <p className="mt-2 text-gray-600">Gestiona preguntas, temas y contenido</p>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('upload')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'upload'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-upload"
-            >
-              Subir Preguntas
-            </button>
-            <button
-              onClick={() => setActiveTab('questions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'questions'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-questions"
-            >
-              Gestionar Preguntas
-            </button>
-            <button
-              onClick={() => setActiveTab('roster')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'roster'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-roster"
-            >
-              Alumnos
-            </button>
-            <button
-              onClick={() => setActiveTab('requests')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'requests'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-requests"
-            >
-              Solicitudes
-              {accessRequests.filter((r) => r.status === 'pending').length > 0 && (
-                <span className="ml-1 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-                  {accessRequests.filter((r) => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('failures')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'failures'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-failures"
-            >
-              Refuerzo
-            </button>
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'documents'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-documents"
-            >
-              Documentos
-              {pendingDocs.length > 0 && (
-                <span className="ml-1 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-                  {pendingDocs.length}
-                </span>
-              )}
-            </button>
-          </nav>
-        </div>
+        {activeTab === null ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="admin-cards">
+            {[
+              { key: 'upload', icon: '📤', label: 'Subir Preguntas', description: 'Sube preguntas nuevas desde un archivo JSON', testId: 'card-upload' },
+              { key: 'questions', icon: '📝', label: 'Gestionar Preguntas', description: 'Edita el árbol de preguntas por tema', testId: 'card-questions' },
+              { key: 'roster', icon: '🎓', label: 'Alumnos', description: 'Roster de alumnos y staff, accesos y progreso', testId: 'card-roster' },
+              {
+                key: 'requests',
+                icon: '📨',
+                label: 'Solicitudes',
+                description: 'Solicitudes de acceso pendientes de revisar',
+                badge: accessRequests.filter((r) => r.status === 'pending').length,
+                testId: 'card-requests',
+              },
+              { key: 'failures', icon: '📉', label: 'Refuerzo', description: 'Fallos más comunes entre los alumnos', testId: 'card-failures' },
+              {
+                key: 'documents',
+                icon: '📄',
+                label: 'Documentos',
+                description: 'Documentos de profesores pendientes de aprobar',
+                badge: pendingDocs.length,
+                testId: 'card-documents',
+              },
+            ].map((section) => (
+              <button
+                key={section.key}
+                onClick={() => setActiveTab(section.key)}
+                className="text-left bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg hover:border-primary-200 transition-shadow"
+                data-testid={section.testId}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="text-3xl mb-3">{section.icon}</div>
+                  {section.badge > 0 && (
+                    <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">{section.badge}</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-gray-900">{section.label}</h3>
+                <p className="text-sm text-gray-500 mt-1">{section.description}</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button
+            onClick={() => setActiveTab(null)}
+            className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+          >
+            ← Volver al panel
+          </button>
+        )}
 
         {/* Tab Content */}
         {activeTab === 'upload' && (
