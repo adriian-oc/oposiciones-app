@@ -26,33 +26,16 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full text-center mb-10">
-        <img src="/branding/banner.png" alt="ADOC - Academia de Oposiciones" className="mx-auto max-w-full h-auto rounded-lg shadow-md mb-6" />
-        <p className="text-gray-700 max-w-lg mx-auto">
-          Prepárate con temario actualizado, supuestos prácticos y seguimiento personalizado de un
-          profesor. ¿Quieres opositar con nosotros o unirte como docente?
-        </p>
-        <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            to="/solicitar-acceso"
-            className="px-5 py-2.5 bg-primary-600 text-white rounded-md font-medium hover:bg-primary-700"
-          >
-            Quiero preparar mi oposición
-          </Link>
-          <Link
-            to="/trabaja-con-nosotros"
-            className="px-5 py-2.5 bg-white text-primary-700 border border-primary-300 rounded-md font-medium hover:bg-primary-50"
-          >
-            Quiero dar clases
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6">
+        <Link to="/" className="flex items-center justify-center gap-2 text-xl font-bold text-primary-700">
+          <img src="/branding/logo.png" alt="ADOC" className="h-10 w-10 object-contain" />
+          ADOC
+        </Link>
+        <div>
+          <h2 className="text-center text-2xl font-bold text-gray-900">Inicia sesión</h2>
+          <p className="mt-1 text-center text-sm text-gray-600">Accede a tu área de alumno o profesor</p>
         </div>
-      </div>
-
-      <div className="max-w-md w-full space-y-8">
-        <p className="text-center text-sm text-gray-600">
-          ¿Ya tienes cuenta? Inicia sesión
-        </p>
         <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
           <form className="space-y-6" onSubmit={handleSubmit} data-testid="login-form">
             {error && (
@@ -107,6 +90,9 @@ const Login = () => {
             <p className="text-sm text-gray-500">
               ¿No puedes entrar? Contacta con tu profesor o con administración.
             </p>
+            <Link to="/solicitar-acceso" className="block text-sm text-primary-600 hover:text-primary-800">
+              ¿Todavía no tienes cuenta? Solicita acceso
+            </Link>
           </div>
         </div>
       </div>

@@ -103,7 +103,7 @@ const Analytics = () => {
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
                   data-testid={`study-plan-item-${theme.theme_id}`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(theme.priority)}`}>
@@ -121,10 +121,17 @@ const Analytics = () => {
                         <span>
                           Errores: <span className="font-medium">{theme.failure_count}</span>
                         </span>
-                        <span className="text-blue-600 font-medium">
-                          Practicar: {theme.recommended_practice_count} preguntas
-                        </span>
                       </div>
+                    </div>
+                    <div className="flex-shrink-0 self-center text-center">
+                      <Link
+                        to={`/cuadernos?theme=${theme.theme_id}`}
+                        className="block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 whitespace-nowrap"
+                        data-testid={`practice-theme-${theme.theme_id}`}
+                      >
+                        Practicar ▶
+                      </Link>
+                      <span className="block mt-1 text-xs text-gray-500">{theme.recommended_practice_count} preguntas</span>
                     </div>
                   </div>
                 </div>

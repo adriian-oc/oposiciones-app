@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PracticeOptionsDialog from '../components/PracticeOptionsDialog';
 import { CONTENT_AREAS } from '../config/contentAreas';
@@ -15,6 +15,9 @@ const THEORY_AREA_IDS = ['ttesp', 'ttgen'];
 const Cuadernos = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const highlightThemeId = searchParams.get('theme');
+  const highlightedRowRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [openAreas, setOpenAreas] = useState(() => new Set());
   const [startingId, setStartingId] = useState(null);
@@ -63,6 +66,25 @@ const Cuadernos = () => {
       });
       setTheoryCounts(counts);
 
+      // Si venimos de "Practicar" en Analítica/Refuerzo con un tema débil concreto, abrir de
+      // entrada solo las áreas donde ese tema es PRACTICABLE de verdad (Cuadernillo con
+      // preguntas, o Teoría con banco propio cargado) -- no todas las áreas donde el tema
+      // simplemente existe (Temario/Esquemas son documentos "Próximamente", no aportan nada
+      // aquí y solo añadirían ruido al desplegable).
+      if (highlightThemeId) {
+        const practicableAreaIds = [];
+        const cuadArea = areas.find((a) => a.area.id === 'cuad');
+        if (cuadArea?.units.some((u) => u.theme?.id === highlightThemeId && u.practicalSet)) {
+          practicableAreaIds.push('cuad');
+        }
+        THEORY_AREA_IDS.forEach((areaId) => {
+          if ((counts[areaId]?.[highlightThemeId] || 0) > 0) practicableAreaIds.push(areaId);
+        });
+        if (practicableAreaIds.length > 0) {
+          setOpenAreas(new Set(practicableAreaIds));
+        }
+      }
+
       const docs = {};
       approvedDocsResult.forEach((doc) => {
         docs[`${doc.area_id}:${doc.theme_id}`] = doc;
@@ -79,6 +101,15 @@ const Cuadernos = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Tras abrir de entrada las áreas del tema débil (ver load()), esperar a que el DOM pinte esas
+  // filas y llevar la vista hasta la primera coincidencia -- si no, el usuario llega a Cuadernos
+  // con el desplegable abierto pero sin saber dónde mirar.
+  useEffect(() => {
+    if (!loading && highlightThemeId && highlightedRowRef.current) {
+      highlightedRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [loading, highlightThemeId]);
 
   const toggleArea = (areaId) => {
     setOpenAreas((prev) => {
@@ -124,12 +155,14 @@ const Cuadernos = () => {
       const isStarting = startingId === unit.key;
       const approvedDoc = meta.approvedDoc;
       return (
-        <div key={unit.key} className="flex flex-col">
+        <div key={unit.key} className="flex flex-col" ref={meta.highlighted ? highlightedRowRef : null}>
           <button
             type="button"
             disabled={isStarting}
             onClick={() => requestStart(unit.key, unit.label, meta.onStart)}
-            className={`${baseClass} text-gray-800 hover:bg-primary-50 disabled:opacity-50`}
+            className={`${baseClass} text-gray-800 hover:bg-primary-50 disabled:opacity-50 ${
+              meta.highlighted ? 'ring-2 ring-primary-400 bg-primary-50' : ''
+            }`}
           >
             <span>{unit.label}</span>
             <span className="text-xs font-medium text-primary-600 flex-shrink-0">
@@ -184,11 +217,13 @@ const Cuadernos = () => {
 
     return units.map((unit) => {
       const approvedDoc = unit.theme ? approvedDocs[`${area.id}:${unit.theme.id}`] : null;
+      const highlighted = !!highlightThemeId && unit.theme?.id === highlightThemeId;
       if (area.kind === 'numbered' || (area.id === 'cuad' && unit.practicalSet)) {
         return renderRow(unit, {
           kind: 'practice',
           onStart: (liveCorrection) => examService.startPractice(unit.practicalSet.id, liveCorrection),
           approvedDoc,
+          highlighted,
         });
       }
       const hasManualTheory = (theoryCounts[area.id]?.[unit.theme.id] || 0) > 0;
@@ -197,6 +232,7 @@ const Cuadernos = () => {
           kind: 'practice',
           onStart: (liveCorrection) => examService.startTheoryPractice(area.id, unit.theme.id, liveCorrection),
           approvedDoc,
+          highlighted,
         });
       }
       const contentUnit = unitsByArea[area.id]?.[unit.theme.id];

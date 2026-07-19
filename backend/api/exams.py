@@ -117,6 +117,15 @@ async def retry_failures(
     exam_service = get_exam_service()
     return await exam_service.retry_failures(attempt_id, current_user["id"])
 
+@router.get("/attempts/{attempt_id}/progress")
+async def get_attempt_progress(
+    attempt_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Ver lo respondido y los fallos de un intento sin terminar (Historial → 'En progreso')"""
+    exam_service = get_exam_service()
+    return await exam_service.get_attempt_progress(attempt_id, current_user["id"])
+
 @router.get("/attempts/{attempt_id}/results")
 async def get_attempt_results(
     attempt_id: str,

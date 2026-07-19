@@ -570,6 +570,64 @@ class ExamService:
         attempt["exam"] = self._build_exam_summary(exam)
         return attempt
 
+    async def get_attempt_progress(self, attempt_id: str, user_id: str) -> dict:
+        """'Ver respuestas y fallos' de un intento TODAVÍA sin terminar (Historial): a diferencia
+        de get_attempt_results, que solo revela correct_answer una vez finished_at está puesto,
+        aquí el propio dueño del intento puede ver -en cualquier momento- si lo que YA ha
+        contestado está bien o mal. No reabre el leak cerrado en _scrub_exam: para las preguntas
+        todavía sin responder no se incluye correct_answer, así este endpoint no sirve para
+        adelantar respuestas antes de contestar."""
+        attempt = await self.exam_repo.get_attempt_by_id(attempt_id)
+        if not attempt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, ATTEMPT_NOT_FOUND_MESSAGE)
+        if attempt["user_id"] != user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, NOT_AUTHORIZED_MESSAGE)
+
+        exam = await self.exam_repo.get_exam_by_id(attempt["exam_id"])
+        if not exam:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, EXAM_NOT_FOUND_MESSAGE)
+
+        answers = attempt.get("answers", {})
+        results = []
+        answered = correct = incorrect = 0
+        for q in exam.get("questions", []):
+            selected = answers.get(q["question_id"])
+            if selected is None:
+                results.append({
+                    "question_id": q["question_id"],
+                    "question_text": q["text"],
+                    "choices": q.get("choices", []),
+                    "answered": False,
+                    "selected_answer": None,
+                    "is_correct": None,
+                    "correct_answer": None,
+                })
+                continue
+            answered += 1
+            is_correct = selected == q["correct_answer"]
+            correct += 1 if is_correct else 0
+            incorrect += 0 if is_correct else 1
+            results.append({
+                "question_id": q["question_id"],
+                "question_text": q["text"],
+                "choices": q.get("choices", []),
+                "answered": True,
+                "selected_answer": selected,
+                "is_correct": is_correct,
+                "correct_answer": q["correct_answer"],
+            })
+
+        return {
+            "attempt_id": attempt_id,
+            "exam": self._build_exam_summary(exam),
+            "total_questions": len(results),
+            "answered": answered,
+            "unanswered": len(results) - answered,
+            "correct": correct,
+            "incorrect": incorrect,
+            "results": results,
+        }
+
     async def retry_failures(self, attempt_id: str, user_id: str) -> dict:
         """'Repasar fallos': crea un examen de un solo uso con únicamente las preguntas que se
         fallaron en un intento ya terminado, persistido como un intento nuevo para reutilizar

@@ -48,6 +48,11 @@ export const examService = {
     return response.data;
   },
 
+  async getAttemptProgress(attemptId) {
+    const response = await api.get(`/api/exams/attempts/${attemptId}/progress`);
+    return response.data;
+  },
+
   async retryFailures(attemptId) {
     const response = await api.post(`/api/exams/attempts/${attemptId}/retry-failures`);
     return response.data;

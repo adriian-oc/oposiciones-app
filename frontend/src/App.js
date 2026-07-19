@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 
 // Pages
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Cuadernos from './pages/Cuadernos';
@@ -11,6 +12,7 @@ import Progress from './pages/Progress';
 import Admin from './pages/Admin';
 import TakeExam from './pages/TakeExam';
 import ExamResults from './pages/ExamResults';
+import AttemptProgress from './pages/AttemptProgress';
 import Analytics from './pages/Analytics';
 import ProfesorDashboard from './pages/ProfesorDashboard';
 import Chat from './pages/Chat';
@@ -30,11 +32,13 @@ const AppRoutes = () => {
       <Route path="/trabaja-con-nosotros" element={<TeacherApplication />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Private routes */}
+      {/* Home: pública (Landing) si no hay sesión, privada si la hay */}
       <Route
         path="/"
         element={
-          user?.role === 'profesor' ? (
+          !user ? (
+            <Landing />
+          ) : user.role === 'profesor' ? (
             <Navigate to="/profesor" />
           ) : (
             <PrivateRoute>
@@ -94,6 +98,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <ExamResults />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/exams/progress/:attemptId"
+        element={
+          <PrivateRoute>
+            <AttemptProgress />
           </PrivateRoute>
         }
       />

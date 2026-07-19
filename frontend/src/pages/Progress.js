@@ -8,6 +8,7 @@ import { adminService } from '../services/adminService';
 import { examService } from '../services/examService';
 import { notesService } from '../services/notesService';
 import practicalSetService from '../services/practicalSetService';
+import { themeService } from '../services/themeService';
 
 const SUPUESTO_RE = /^Supuesto\s+(\d+)/i;
 const CUADERNILLO_PREFIX = 'Cuadernillo';
@@ -22,6 +23,24 @@ const StatCard = ({ value, label, color }) => (
     <div className="text-sm text-gray-600 mt-1">{label}</div>
   </div>
 );
+
+// Fila de progreso reutilizada por Cuadernillo/Teoría en la pestaña "Por tema" -- misma barra +
+// porcentaje que ya usaban Cuadernillos/Supuestos, ahora también para Test de Teoría por tema.
+const ProgressUnitRow = ({ unitKey, label, score, isOpen, onToggle, renderDetail, detailLabel }) => {
+  const pct = score ? score.pct : 0;
+  return (
+    <div>
+      <button onClick={onToggle} className="w-full flex items-center gap-3 text-left">
+        <span className="w-40 text-sm text-gray-800">{label}</span>
+        <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+          {score && <div className={`h-full ${pctColor(pct)}`} style={{ width: `${pct}%` }} />}
+        </div>
+        <span className="w-12 text-right text-xs text-gray-600">{score ? `${pct}%` : '—'}</span>
+      </button>
+      {isOpen && renderDetail(unitKey, detailLabel)}
+    </div>
+  );
+};
 
 const EXAM_TYPE_LABELS = {
   THEORY_TOPIC: 'Teoría por Tema',
@@ -64,8 +83,10 @@ const Progress = () => {
   const [viewedUser, setViewedUser] = useState(null);
   const [progress, setProgress] = useState(null);
   const [psById, setPsById] = useState({});
-  const [cuadernillos, setCuadernillos] = useState([]);
   const [supuestos, setSupuestos] = useState([]);
+  const [specificThemes, setSpecificThemes] = useState([]);
+  const [generalThemes, setGeneralThemes] = useState([]);
+  const [cuadernilloByTheme, setCuadernilloByTheme] = useState({});
   const [notes, setNotes] = useState([]);
   const [notesSearch, setNotesSearch] = useState('');
   const [examHistory, setExamHistory] = useState([]);
@@ -77,20 +98,29 @@ const Progress = () => {
     if (!targetUserId) return;
     setLoading(true);
     try {
-      const [progressData, practicalSets, historyData] = await Promise.all([
+      const [progressData, practicalSets, historyData, specific, general] = await Promise.all([
         isOther ? progressService.getProgress(targetUserId) : progressService.getMyProgress(),
         practicalSetService.getAll(0, 100),
         isOther ? examService.getHistoryFor(targetUserId, 50) : examService.getHistory(50),
+        themeService.getThemes('SPECIFIC'),
+        themeService.getThemes('GENERAL'),
       ]);
       setProgress(progressData);
       setPsById(Object.fromEntries(practicalSets.map((ps) => [ps.id, ps])));
-      setCuadernillos(practicalSets.filter((ps) => ps.title.startsWith(CUADERNILLO_PREFIX)));
+      const cuadernillosList = practicalSets.filter((ps) => ps.title.startsWith(CUADERNILLO_PREFIX));
+      setCuadernilloByTheme(
+        Object.fromEntries(
+          cuadernillosList.filter((ps) => ps.theme_ids?.[0]).map((ps) => [ps.theme_ids[0], ps])
+        )
+      );
       setSupuestos(
         practicalSets
           .filter((ps) => SUPUESTO_RE.test(ps.title))
           .sort((a, b) => parseInt(a.title.match(SUPUESTO_RE)[1], 10) - parseInt(b.title.match(SUPUESTO_RE)[1], 10))
       );
       setExamHistory(historyData.history || []);
+      setSpecificThemes(specific);
+      setGeneralThemes(general);
 
       if (isOther) {
         const roster = await adminService.listStudents();
@@ -236,31 +266,77 @@ const Progress = () => {
         )}
 
         {tab === 'temas' && (
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">📊 Resultados por tema</h2>
-            <p className="text-sm text-gray-500 mb-4">Cuadernillos de Ejercicios · Haz clic para ver tu evolución</p>
-            {cuadernillos.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">Todavía no hay cuadernillos disponibles.</p>
-            ) : (
-              <div className="space-y-2">
-                {cuadernillos.map((ps) => {
-                  const score = progress.content_scores?.[ps.id];
-                  const pct = score ? score.pct : 0;
-                  return (
-                    <div key={ps.id}>
-                      <button onClick={() => toggleDetail(ps.id)} className="w-full flex items-center gap-3 text-left">
-                        <span className="w-56 truncate text-sm text-gray-800" title={ps.title}>{ps.title}</span>
-                        <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                          {score && <div className={`h-full ${pctColor(pct)}`} style={{ width: `${pct}%` }} />}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">📘 Parte Específica</h2>
+              <p className="text-sm text-gray-500 mb-4">Cada tema tiene su Cuadernillo y su Test de Teoría · Haz clic en una barra para ver tu evolución</p>
+              {specificThemes.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">Todavía no hay temas disponibles.</p>
+              ) : (
+                <div className="space-y-5">
+                  {specificThemes.map((theme) => {
+                    const cuadernillo = cuadernilloByTheme[theme.id];
+                    return (
+                      <div key={theme.id} className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">{theme.name}</h3>
+                        <div className="space-y-2">
+                          {cuadernillo ? (
+                            <ProgressUnitRow
+                              unitKey={cuadernillo.id}
+                              label="📗 Cuadernillo"
+                              score={progress.content_scores?.[cuadernillo.id]}
+                              isOpen={openDetail === cuadernillo.id}
+                              onToggle={() => toggleDetail(cuadernillo.id)}
+                              renderDetail={renderDetail}
+                              detailLabel={`${theme.name} — Cuadernillo`}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-3 text-sm text-gray-400">
+                              <span className="w-40">📗 Cuadernillo</span>
+                              <span>No disponible</span>
+                            </div>
+                          )}
+                          <ProgressUnitRow
+                            unitKey={`ttesp:${theme.id}`}
+                            label="✅ Teoría"
+                            score={progress.content_scores?.[`ttesp:${theme.id}`]}
+                            isOpen={openDetail === `ttesp:${theme.id}`}
+                            onToggle={() => toggleDetail(`ttesp:${theme.id}`)}
+                            renderDetail={renderDetail}
+                            detailLabel={`${theme.name} — Teoría`}
+                          />
                         </div>
-                        <span className="w-12 text-right text-xs text-gray-600">{score ? `${pct}%` : '—'}</span>
-                      </button>
-                      {openDetail === ps.id && renderDetail(ps.id, ps.title)}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">📕 Parte General</h2>
+              <p className="text-sm text-gray-500 mb-4">Solo Test de Teoría (sin cuadernillos)</p>
+              {generalThemes.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-8">Todavía no hay temas disponibles.</p>
+              ) : (
+                <div className="space-y-2">
+                  {generalThemes.map((theme) => (
+                    <div key={theme.id} className="border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">{theme.name}</h3>
+                      <ProgressUnitRow
+                        unitKey={`ttgen:${theme.id}`}
+                        label="✅ Teoría"
+                        score={progress.content_scores?.[`ttgen:${theme.id}`]}
+                        isOpen={openDetail === `ttgen:${theme.id}`}
+                        onToggle={() => toggleDetail(`ttgen:${theme.id}`)}
+                        renderDetail={renderDetail}
+                        detailLabel={`${theme.name} — Teoría`}
+                      />
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -374,11 +450,14 @@ const Progress = () => {
                         )}
                       </td>
                       {!isOther && (
-                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           {attempt.is_completed ? (
                             <Link to={`/exams/results/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver Resultados</Link>
                           ) : (
-                            <Link to={`/exams/take/${attempt.attempt_id}`} className="text-green-600 hover:text-green-900">Continuar</Link>
+                            <>
+                              <Link to={`/exams/take/${attempt.attempt_id}`} className="text-green-600 hover:text-green-900">Continuar</Link>
+                              <Link to={`/exams/progress/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver respuestas</Link>
+                            </>
                           )}
                         </td>
                       )}

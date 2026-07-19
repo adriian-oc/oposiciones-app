@@ -274,6 +274,29 @@ verificada por `pytest` (14/14) y en navegador con los 3 usuarios de prueba:
   next_review_date=mañana`; adelantando esa fecha a "hoy" y regenerando, la unidad reapareció
   correctamente etiquetada "review" con el motivo correcto.
 
+**Ronda 8 (usuarios reales, landing de venta) — en curso**:
+
+- **11 cuentas reales creadas en la Mongo local** (`opositores_dev`), a partir de un roster que
+  compartió el usuario (captura de pantalla de su panel de administración actual, con correos
+  reales, fechas de expiración y estado de pago): 9 alumnas/os con contraseña `Nueva.123`,
+  `adrian.oliva.carceles@gmail.com` como profesor (`AdocAdmin2026!`) y
+  `oposicionesadoc@gmail.com` como admin (`kyrbYj-8gunwe-nettaf`). Creadas con un script
+  temporal fuera del repo (scratchpad, borrado tras usarse) — **no hay ningún script en el repo
+  que las recree**; si hace falta reconstruir la Mongo local desde cero, solo quedan los 3
+  usuarios sintéticos de `dev_bootstrap.py`. Los nombres mostrados de los 9 alumnos se derivaron
+  del prefijo del correo (no había columna de nombre en la captura) — pendiente de que cada
+  alumno los corrija en su perfil si hace falta. **Estas cuentas existen solo en local: no hay
+  base de datos de producción todavía** (bloqueado en la infraestructura, ver más abajo).
+- **Página de inicio (`/`) rediseñada como landing de venta**: antes redirigía siempre a
+  `Login.js` (que había ganado una cabecera de marketing en la ronda 6). Se separó en dos
+  páginas: `frontend/src/pages/Landing.js` (nueva, pública, con héroe/beneficios/diferenciador
+  de repaso espaciado/cómo-empezar/CTA final, acceso "Iniciar sesión" arriba a la derecha, sin
+  testimonios ni cifras inventadas) y `Login.js` (vuelto a un formulario simple, sin la cabecera
+  de marketing). `App.js`: `/` muestra `Landing` si no hay sesión, y el dashboard de siempre si
+  la hay. Verificado en navegador (desktop y móvil, logout→login funcionando).
+  **Sin commitear ni subir todavía** — `git status` en este punto: `App.js` y `Login.js`
+  modificados, `Landing.js` nuevo, sin trackear.
+
 ## Lo único pendiente: infraestructura de producción y cutover del dominio
 
 **Bloqueado en el usuario**, no en mí: no puedo crear cuentas de terceros en su nombre. Falta que
@@ -312,20 +335,15 @@ ya existen, les fija la contraseña de prueba). Los datos de contenido ya están
 `opositores_dev` — no hace falta re-ejecutar los scripts de importación a menos que se recree la
 base desde cero.
 
-## Asunto sin resolver: el usuario no podía entrar desde su propio navegador
-
-En la sesión anterior el usuario reportó "Correo o contraseña incorrectos" al intentar entrar con
-`admin.test@example.com` desde su navegador real (no el navegador embebido de la sesión de
-Claude Code). Se verificó exhaustivamente que backend, emulador y el bundle servido por el
-frontend eran correctos. **Se descubrió que el proceso del frontend (`react-scripts start`)
-se había caído** en algún momento — causa más probable del problema, aunque no confirmada del
-todo porque el usuario no llegó a compartir el error de consola pedido. Si vuelve a fallar el
-login: lo primero es comprobar que el frontend (puerto 3000) esté realmente sirviendo (no solo
-que responda `curl`, sino que compile sin errores), y si sigue fallando, pedir al usuario el
-error exacto de la consola del navegador (F12 → Consola/Red).
-
 ## Cómo seguir
 
-Cuando retomes: confirma que los 4 servicios locales están arriba (Mongo, emulador, backend,
-frontend), pregunta al usuario si quiere seguir con la Fase 8 ahora (¿ya tiene alguna de las 4
-cuentas creadas?) o prefiere seguir puliendo funcionalidades en local primero.
+Cuando retomes:
+1. Confirma que los 3 servicios locales están arriba (Mongo, backend, frontend).
+2. Pregunta si quiere commitear y subir el rediseño de la landing (`git status` mostrará
+   `App.js`/`Login.js` modificados y `Landing.js` nuevo si no se ha hecho ya) — **no lo subas sin
+   que lo pida explícitamente en esta conversación**, aunque ya haya pedido subir trabajo en el
+   pasado.
+3. Pregunta si quiere seguir puliendo la landing/funcionalidades en local, o si ya tiene alguna
+   de las 3 cuentas de infraestructura de producción creadas para avanzar hacia el despliegue.
+   Cualquier acción de despliegue real necesita su confirmación explícita en el momento, nunca
+   se asume de una aprobación anterior.
