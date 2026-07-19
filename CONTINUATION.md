@@ -336,16 +336,23 @@ todo:
    Render no lo lee automáticamente así que se configuró a mano). URL:
    **`https://pagina-final-mhnt.onrender.com`**.
 3. **Frontend en Vercel** (plan Free/Hobby). Proyecto `pagina-final`, root directory `frontend`,
-   preset Create React App, variable `REACT_APP_API_URL` apuntando al backend de Render. URL
-   estable de producción: **`https://pagina-final-nine.vercel.app`** (ojo: la UI de Vercel/GitHub
-   a veces muestra el dominio o rutas de archivos con acentos raros tipo "página-final-nueve" por
-   un glitch de renderizado — el dominio/rutas reales, sin tildes, son los de este documento).
-   El "preset de servicios" multi-repo de Vercel había detectado también `backend/` como un
-   segundo servicio a desplegar — se descartó explícitamente (el backend ya vive en Render) y se
-   forzó el preset a "Create React App" con root directory `frontend` únicamente.
-4. **`FRONTEND_BASE_URL`** en Render actualizado de `http://localhost:3000` a la URL real de
-   Vercel (se usa para construir los enlaces de restablecimiento de contraseña que el admin
-   genera y comparte).
+   preset Create React App, variable `REACT_APP_API_URL` apuntando al backend de Render.
+   **URL comercial (la que se comparte/usa siempre)**: **`https://adoc-oposiciones.vercel.app`**.
+   La URL auto-generada `https://pagina-final-nine.vercel.app` también sigue activa (mismo
+   proyecto, dos dominios apuntando a Producción), no hace falta redirigirla. (Ojo: la UI de
+   Vercel/GitHub a veces muestra dominios o rutas de archivos con acentos raros tipo
+   "página-final-nueve" por un glitch de renderizado — el dominio/rutas reales, sin tildes, son
+   los de este documento). El "preset de servicios" multi-repo de Vercel había detectado también
+   `backend/` como un segundo servicio a desplegar — se descartó explícitamente (el backend ya
+   vive en Render) y se forzó el preset a "Create React App" con root directory `frontend`
+   únicamente.
+4. **`FRONTEND_BASE_URL`** en Render apunta a `https://adoc-oposiciones.vercel.app` (se usa para
+   construir los enlaces de restablecimiento de contraseña que el admin genera y comparte).
+5. **Logo** (`frontend/public/branding/logo.png`): el archivo original era un lienzo 1024×1024
+   con mucho margen blanco alrededor del icono real (por eso se veía diminuto/ilegible en el
+   header). Se recortó al icono + wordmark "ADOC" (sin el eslogan, ilegible a tamaño de
+   cabecera), con fondo transparente — y se quitó el `<span>ADOC</span>` duplicado que iba al
+   lado en Layout/Login/Landing, ya que el logo recortado ya incluye el texto.
 
 **Bug real encontrado y arreglado durante el despliegue**: el primer intento de deploy en Vercel
 falló — `frontend/src/pages/Cuadernos.js`, el `useCallback` de `load` usaba `highlightThemeId`
@@ -355,7 +362,7 @@ defecto) trata los warnings de ESLint como error y rompe el build. Arreglado añ
 `highlightThemeId` a las dependencias; verificado localmente con `CI=true npm run build` antes
 de volver a subir.
 
-**Verificado de punta a punta**: login real contra `https://pagina-final-nine.vercel.app` con
+**Verificado de punta a punta**: login real contra `https://adoc-oposiciones.vercel.app` con
 la cuenta admin — la petición viaja al backend de Render, consulta Mongo Atlas, devuelve JWT y
 entra al panel de admin. Las 11 cuentas reales del roster ya existen también en esta base de
 producción (contraseñas rotadas tras el incidente de seguridad de arriba — pedir al usuario que
