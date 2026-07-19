@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from models.auth import LoginRequest, TokenResponse, ResetPasswordRequest
-from models.user import UserResponse
+from models.user import UserResponse, UserUpdate, SelfProfileUpdate
 from middleware.auth import get_current_user
 from repositories.user_repository import UserRepository
 from services.auth_service import (
@@ -44,3 +44,14 @@ async def reset_password(data: ResetPasswordRequest):
 async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """Get current user information"""
     return UserResponse(**current_user)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_own_profile(data: SelfProfileUpdate, current_user: dict = Depends(get_current_user)):
+    """Autoservicio: cualquier usuario autenticado edita su propio nombre y perfil -- el resto
+    del roster (role/revoked/allowed_content/...) sigue siendo solo-admin vía
+    PATCH /api/admin/students/{id}."""
+    user_repo = UserRepository()
+    update = UserUpdate(**data.model_dump(exclude_unset=True))
+    updated = await user_repo.update_fields(current_user["id"], update)
+    return UserResponse(**updated)

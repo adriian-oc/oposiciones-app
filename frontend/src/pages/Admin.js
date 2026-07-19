@@ -217,8 +217,8 @@ const Admin = () => {
     loadRoster();
   };
 
-  const handleSaveProfile = async (profile) => {
-    await adminService.updateStudent(profileEditingUser.id, { profile });
+  const handleSaveProfile = async (payload) => {
+    await adminService.updateStudent(profileEditingUser.id, payload);
     setProfileEditingUser(null);
     loadRoster();
   };
@@ -813,6 +813,7 @@ const PREP_TIME_OPTIONS = ['', 'Sin empezar', 'Menos de 6 meses', '6 meses - 1 a
 
 const ProfileEditorModal = ({ user, onClose, onSave }) => {
   const profile = user.profile || {};
+  const isStudent = user.role === 'student';
   const [fullName, setFullName] = useState(profile.full_name || user.display_name || '');
   const [birthDate, setBirthDate] = useState(profile.birth_date || '');
   const [prepTime, setPrepTime] = useState(profile.prep_time || '');
@@ -822,11 +823,14 @@ const ProfileEditorModal = ({ user, onClose, onSave }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
-      full_name: fullName.trim() || null,
-      birth_date: birthDate || null,
-      prep_time: prepTime || null,
-      prep_with: prepWith.trim() || null,
-      weak_points: weakPoints.trim() || null,
+      display_name: fullName.trim() || user.display_name,
+      profile: {
+        full_name: fullName.trim() || null,
+        birth_date: birthDate || null,
+        prep_time: prepTime || null,
+        prep_with: prepWith.trim() || null,
+        weak_points: weakPoints.trim() || null,
+      },
     });
   };
 
@@ -848,45 +852,49 @@ const ProfileEditorModal = ({ user, onClose, onSave }) => {
             <label className="block text-sm font-medium text-gray-700">Correo (no editable, es su acceso)</label>
             <input type="text" value={user.email} disabled className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Fecha de nacimiento</label>
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">¿Cuánto tiempo lleva preparándose?</label>
-            <select
-              value={prepTime}
-              onChange={(e) => setPrepTime(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              {PREP_TIME_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o || 'Selecciona...'}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">¿Con quién se ha preparado?</label>
-            <input
-              type="text"
-              value={prepWith}
-              onChange={(e) => setPrepWith(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Puntos débiles</label>
-            <textarea
-              value={weakPoints}
-              onChange={(e) => setWeakPoints(e.target.value)}
-              rows="3"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
+          {isStudent && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">¿Cuánto tiempo lleva preparándose?</label>
+                <select
+                  value={prepTime}
+                  onChange={(e) => setPrepTime(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {PREP_TIME_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o || 'Selecciona...'}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">¿Con quién se ha preparado?</label>
+                <input
+                  type="text"
+                  value={prepWith}
+                  onChange={(e) => setPrepWith(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Puntos débiles</label>
+                <textarea
+                  value={weakPoints}
+                  onChange={(e) => setWeakPoints(e.target.value)}
+                  rows="3"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </>
+          )}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
               Cancelar

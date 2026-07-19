@@ -21,6 +21,7 @@ import AccessRequest from './pages/AccessRequest';
 import TeacherApplication from './pages/TeacherApplication';
 import ResetPassword from './pages/ResetPassword';
 import StudyCalendar from './pages/StudyCalendar';
+import MiPerfil from './pages/MiPerfil';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -162,6 +163,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute allowedRoles={['admin', 'profesor']}>
             <StudyCalendar />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/mi-perfil"
+        element={
+          <PrivateRoute>
+            <MiPerfil />
           </PrivateRoute>
         }
       />

@@ -66,6 +66,7 @@ class UserResponse(UserBase):
 
 class UserUpdate(BaseModel):
     """Campos que un admin puede parchear en el roster de un usuario existente."""
+    display_name: Optional[str] = None
     revoked: Optional[bool] = None
     expires_at: Optional[datetime] = None
     allowed_content: Optional[List[str]] = None
@@ -74,3 +75,9 @@ class UserUpdate(BaseModel):
     payments_received: Optional[List[PaymentRecord]] = None
     profile: Optional[Profile] = None
     role: Optional[str] = None
+
+class SelfProfileUpdate(BaseModel):
+    """Autoservicio: lo que un usuario puede cambiar de sí mismo (nunca role/revoked/
+    allowed_content/etc, que siguen siendo solo-admin vía UserUpdate)."""
+    display_name: Optional[str] = None
+    profile: Optional[Profile] = None

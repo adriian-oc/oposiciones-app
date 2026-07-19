@@ -35,10 +35,20 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Tras editar el propio perfil (MiPerfil.js) hace falta refrescar el user en contexto para que
+  // el resto de la app (p.ej. la puerta de perfil obligatorio en PrivateRoute) vea los datos ya
+  // completos sin necesidad de recargar la página.
+  const refreshUser = async () => {
+    const userData = await authService.getCurrentUser();
+    setUser(userData);
+    return userData;
+  };
+
   const value = {
     user,
     login,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
     loading,
   };

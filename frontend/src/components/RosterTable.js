@@ -91,6 +91,11 @@ const RosterTable = ({
       <button onClick={() => onViewProgress(u)} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
         📊 Progreso
       </button>
+      {(u.role === 'student' || u.role === 'profesor') && (
+        <button onClick={() => onEditProfile(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+          👤 Perfil
+        </button>
+      )}
       {u.role === 'student' && (
         <>
           <Link
@@ -99,9 +104,6 @@ const RosterTable = ({
           >
             💬 Chat
           </Link>
-          <button onClick={() => onEditProfile(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-            👤 Perfil
-          </button>
           <button onClick={() => onEditContent(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
             ✏️ Acceso
           </button>

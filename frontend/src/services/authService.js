@@ -14,6 +14,11 @@ export const authService = {
     return response.data;
   },
 
+  async updateOwnProfile(data) {
+    const response = await api.patch('/api/auth/me', data);
+    return response.data;
+  },
+
   async logout() {
     localStorage.removeItem(TOKEN_KEY);
   },

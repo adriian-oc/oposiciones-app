@@ -1,9 +1,10 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const PrivateRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -26,6 +27,14 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
         </div>
       </div>
     );
+  }
+
+  // Un alumno con el perfil incompleto (sin nombre o fecha de nacimiento) no puede usar el
+  // resto de la app hasta completarlo -- se le manda a /mi-perfil en vez de a cualquier ruta
+  // pedida. useLocation() evita el bucle: la propia ruta /mi-perfil nunca se redirige a sí misma.
+  const profileIncomplete = user.role === 'student' && (!user.profile?.full_name || !user.profile?.birth_date);
+  if (profileIncomplete && location.pathname !== '/mi-perfil') {
+    return <Navigate to="/mi-perfil" state={{ mandatory: true }} />;
   }
 
   return children;
