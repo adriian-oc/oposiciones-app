@@ -679,6 +679,19 @@ class ExamService:
             "exam": self._scrub_exam(created_exam.model_dump()),
         }
 
+    async def delete_attempt(self, attempt_id: str, user_id: str) -> None:
+        """Borrar un intento SIN TERMINAR desde el Historial -- solo el propio dueño, y solo si
+        no está finalizado (un intento ya terminado es el registro real de una nota, no se
+        borra desde aquí)."""
+        attempt = await self.exam_repo.get_attempt_by_id(attempt_id)
+        if not attempt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, ATTEMPT_NOT_FOUND_MESSAGE)
+        if attempt["user_id"] != user_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, NOT_AUTHORIZED_MESSAGE)
+        if attempt.get("finished_at"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "No se puede borrar un intento ya finalizado")
+        await self.exam_repo.delete_attempt(attempt_id)
+
     async def get_user_exam_history(self, user_id: str, limit: int = 50) -> List[dict]:
         """Get user's exam history"""
         attempts = await self.exam_repo.get_attempts_by_user(user_id, limit)

@@ -1,16 +1,50 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useExamGuard } from '../context/ExamGuardContext';
+import ConfirmDialog from './ConfirmDialog';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { guarded, setGuarded } = useExamGuard();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  // Mientras hay un examen sin terminar, cualquier salida por el nav (incluido cerrar sesión)
+  // pasa primero por un aviso -- el examen sigue guardado y se puede retomar desde el
+  // Historial en Mi Progreso, así que se lo decimos explícitamente en el mensaje.
+  const guardedNavigate = (e, to) => {
+    if (!guarded) return;
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    setPendingNav({ to });
+  };
+
+  const guardedLogout = (e) => {
+    if (guarded) {
+      e.preventDefault();
+      setPendingNav({ logout: true });
+      return;
+    }
+    handleLogout();
+  };
+
+  const confirmLeave = async () => {
+    const nav = pendingNav;
+    setPendingNav(null);
+    setGuarded(false);
+    if (nav.logout) {
+      await handleLogout();
+    } else {
+      navigate(nav.to);
+    }
   };
 
   const isActive = (path) => {
@@ -37,7 +71,7 @@ const Layout = ({ children }) => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="flex items-center">
+                <Link to="/" onClick={(e) => guardedNavigate(e, '/')} className="flex items-center">
                   <img src="/branding/logo.png" alt="ADOC" className="h-12 w-auto object-contain" />
                 </Link>
               </div>
@@ -46,6 +80,7 @@ const Layout = ({ children }) => {
                   <Link
                     key={link.to}
                     to={link.to}
+                    onClick={(e) => guardedNavigate(e, link.to)}
                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                       (link.exact ? location.pathname === link.to : isActive(link.to))
                         ? 'border-primary-500 text-gray-900'
@@ -64,7 +99,7 @@ const Layout = ({ children }) => {
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </span>
               <button
-                onClick={handleLogout}
+                onClick={guardedLogout}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                 data-testid="logout-button"
               >
@@ -103,7 +138,13 @@ const Layout = ({ children }) => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    if (guarded) {
+                      guardedNavigate(e, link.to);
+                    } else {
+                      setMobileMenuOpen(false);
+                    }
+                  }}
                   className={`block px-4 py-2 text-base font-medium ${
                     (link.exact ? location.pathname === link.to : isActive(link.to))
                       ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-500'
@@ -119,7 +160,7 @@ const Layout = ({ children }) => {
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </div>
               <button
-                onClick={handleLogout}
+                onClick={guardedLogout}
                 className="w-full text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
               >
                 Cerrar sesión
@@ -133,6 +174,16 @@ const Layout = ({ children }) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {pendingNav && (
+        <ConfirmDialog
+          message="Tienes un examen sin terminar. Si sales ahora, puedes continuarlo más tarde desde Mi Progreso → Historial. ¿Seguro que quieres salir?"
+          confirmLabel="Salir"
+          danger
+          onConfirm={confirmLeave}
+          onCancel={() => setPendingNav(null)}
+        />
+      )}
     </div>
   );
 };

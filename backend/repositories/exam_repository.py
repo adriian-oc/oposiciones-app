@@ -45,6 +45,10 @@ class ExamRepository:
         )
         return result.modified_count > 0
 
+    async def delete_attempt(self, attempt_id: str) -> bool:
+        result = await self.attempt_collection.delete_one({"id": attempt_id})
+        return result.deleted_count > 0
+
     async def get_attempts_by_user(self, user_id: str, limit: int = 50) -> List[dict]:
         return await (
             self.attempt_collection.find({"user_id": user_id}, {"_id": 0})

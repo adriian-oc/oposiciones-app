@@ -53,6 +53,10 @@ export const examService = {
     return response.data;
   },
 
+  async deleteAttempt(attemptId) {
+    await api.delete(`/api/exams/attempts/${attemptId}`);
+  },
+
   async retryFailures(attemptId) {
     const response = await api.post(`/api/exams/attempts/${attemptId}/retry-failures`);
     return response.data;

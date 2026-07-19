@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ViewingBanner from '../components/ViewingBanner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import { progressService } from '../services/progressService';
 import { adminService } from '../services/adminService';
@@ -90,6 +91,7 @@ const Progress = () => {
   const [notes, setNotes] = useState([]);
   const [notesSearch, setNotesSearch] = useState('');
   const [examHistory, setExamHistory] = useState([]);
+  const [deletingAttempt, setDeletingAttempt] = useState(null);
   const [openDetail, setOpenDetail] = useState(null);
   const [detailHistory, setDetailHistory] = useState({}); // content_unit_key -> [{score,total,date}]
   const [startingId, setStartingId] = useState(null);
@@ -138,6 +140,17 @@ const Progress = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleDeleteAttempt = async () => {
+    const attemptId = deletingAttempt;
+    setDeletingAttempt(null);
+    try {
+      await examService.deleteAttempt(attemptId);
+      setExamHistory((prev) => prev.filter((a) => a.attempt_id !== attemptId));
+    } catch (error) {
+      alert('Error al borrar el intento: ' + (error.response?.data?.detail || error.message));
+    }
+  };
 
   const startPracticalSet = async (practicalSetId) => {
     setStartingId(practicalSetId);
@@ -457,6 +470,12 @@ const Progress = () => {
                             <>
                               <Link to={`/exams/take/${attempt.attempt_id}`} className="text-green-600 hover:text-green-900">Continuar</Link>
                               <Link to={`/exams/progress/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver respuestas</Link>
+                              <button
+                                onClick={() => setDeletingAttempt(attempt.attempt_id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Borrar
+                              </button>
                             </>
                           )}
                         </td>
@@ -469,6 +488,15 @@ const Progress = () => {
           </div>
         )}
       </div>
+      {deletingAttempt && (
+        <ConfirmDialog
+          message="¿Borrar este intento sin terminar? No podrás recuperarlo."
+          confirmLabel="Borrar"
+          danger
+          onConfirm={handleDeleteAttempt}
+          onCancel={() => setDeletingAttempt(null)}
+        />
+      )}
     </Layout>
   );
 };

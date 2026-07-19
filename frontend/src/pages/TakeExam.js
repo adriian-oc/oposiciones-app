@@ -5,10 +5,12 @@ import { examService } from '../services/examService';
 import { notesService } from '../services/notesService';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AskTeacherButton from '../components/AskTeacherButton';
+import { useExamGuard } from '../context/ExamGuardContext';
 
 const TakeExam = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
+  const { setGuarded } = useExamGuard();
   const [exam, setExam] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -25,6 +27,23 @@ const TakeExam = () => {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMinutesInput, setTimerMinutesInput] = useState(30);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+
+  // Mientras este componente está montado, el examen se considera "en curso": Layout.js avisa
+  // antes de dejar salir por el nav, y el navegador avisa antes de cerrar/recargar la pestaña.
+  // Se desactiva solo al desmontar (navegar fuera de aquí), tanto si fue por confirmar la salida
+  // como por terminar el examen normalmente.
+  useEffect(() => {
+    setGuarded(true);
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      setGuarded(false);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [setGuarded]);
 
   // Cronómetro de cuenta atrás opcional para simular las condiciones de un examen real. Cuenta
   // en negativo si se pasa el tiempo en vez de parar, para que el alumno vea cuánto se ha
@@ -115,10 +134,6 @@ const TakeExam = () => {
     }
   };
 
-  const handleJumpToQuestion = (index) => {
-    setCurrentQuestionIndex(index);
-  };
-
   const confirmFinish = async () => {
     setShowFinishConfirm(false);
     setSubmitting(true);
@@ -158,15 +173,6 @@ const TakeExam = () => {
   const currentCase = exam.cases?.find((c) =>
     c.question_positions.includes(currentQuestionIndex + 1)
   );
-
-  const caseStateClass = (c) => {
-    const answeredInCase = c.question_positions.filter(
-      (pos) => answers[exam.questions[pos - 1]?.question_id] !== undefined
-    ).length;
-    if (answeredInCase === 0) return 'bg-gray-100 text-gray-600 border border-gray-300';
-    if (answeredInCase < c.question_positions.length) return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
-    return 'bg-green-100 text-green-800 border border-green-300';
-  };
 
   const canTakeNotes = exam.mode === 'practice' && exam.content_unit_key && currentCase;
 
@@ -262,9 +268,6 @@ const TakeExam = () => {
                   📝 Notas
                 </button>
               )}
-              <div className="text-sm text-gray-600">
-                Respondidas: {answeredCount} / {exam.questions.length}
-              </div>
             </div>
           </div>
           
@@ -278,35 +281,21 @@ const TakeExam = () => {
           </div>
         </div>
 
-        {/* Puntos de navegación por caso/minisupuesto (solo en modo práctica) */}
-        {exam.cases && exam.cases.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-testid="case-dots">
-            <div className="text-sm text-gray-600 mb-2">Casos de este supuesto/cuadernillo:</div>
-            <div className="flex flex-wrap gap-2">
-              {exam.cases.map((c) => (
-                <button
-                  key={c.position}
-                  onClick={() => handleJumpToQuestion(c.question_positions[0] - 1)}
-                  title={c.title}
-                  className={`w-9 h-9 rounded-full text-sm font-medium ${
-                    currentCase?.position === c.position
-                      ? 'ring-2 ring-primary-500 ' + caseStateClass(c)
-                      : caseStateClass(c)
-                  }`}
-                  data-testid={`case-dot-${c.position}`}
-                >
-                  {c.position}
-                </button>
-              ))}
-            </div>
-            {currentCase && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-800">{currentCase.title}</h3>
-                {currentCase.description && (
-                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{currentCase.description}</p>
-                )}
-              </div>
+        {/* Minisupuesto del caso actual (solo en modo práctica de Supuestos/Cuadernillos) --
+            sin selector de casos: Anterior/Siguiente ya avanzan de caso al cruzar sus preguntas. */}
+        {currentCase ? (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-testid="current-case">
+            <h3 className="text-sm font-semibold text-gray-800">{currentCase.title}</h3>
+            {currentCase.description && (
+              <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{currentCase.description}</p>
             )}
+            <div className="text-xs text-gray-500 mt-3">
+              Respondidas: {answeredCount} / {exam.questions.length}
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-gray-500 mb-2">
+            Respondidas: {answeredCount} / {exam.questions.length}
           </div>
         )}
 
@@ -400,26 +389,6 @@ const TakeExam = () => {
             >
               Siguiente →
             </button>
-          </div>
-
-          {/* Question Grid */}
-          <div className="grid grid-cols-10 gap-2 mb-4">
-            {exam.questions.map((q, index) => (
-              <button
-                key={index}
-                onClick={() => handleJumpToQuestion(index)}
-                className={`w-10 h-10 rounded-md text-sm font-medium ${
-                  index === currentQuestionIndex
-                    ? 'bg-primary-600 text-white'
-                    : answers[q.question_id] !== undefined
-                    ? 'bg-green-100 text-green-800 border border-green-300'
-                    : 'bg-gray-100 text-gray-600 border border-gray-300'
-                }`}
-                data-testid={`question-nav-${index}`}
-              >
-                {index + 1}
-              </button>
-            ))}
           </div>
 
           <button

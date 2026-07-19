@@ -126,6 +126,15 @@ async def get_attempt_progress(
     exam_service = get_exam_service()
     return await exam_service.get_attempt_progress(attempt_id, current_user["id"])
 
+@router.delete("/attempts/{attempt_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_attempt(
+    attempt_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Borrar un intento sin terminar desde el Historial"""
+    exam_service = get_exam_service()
+    await exam_service.delete_attempt(attempt_id, current_user["id"])
+
 @router.get("/attempts/{attempt_id}/results")
 async def get_attempt_results(
     attempt_id: str,

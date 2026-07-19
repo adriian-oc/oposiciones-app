@@ -7,7 +7,6 @@ import RosterTable from '../components/RosterTable';
 import TopFailuresPanel from '../components/TopFailuresPanel';
 import ContentAccessChecklist from '../components/ContentAccessChecklist';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { themeService } from '../services/themeService';
 import { adminService } from '../services/adminService';
 import { accessRequestService } from '../services/accessRequestService';
 import documentService from '../services/documentService';
@@ -15,8 +14,7 @@ import { openGmailCompose } from '../utils/gmailCompose';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'questions', 'themes', 'roster', 'requests', 'failures', 'documents'
-  const [themes, setThemes] = useState([]);
+  const [activeTab, setActiveTab] = useState('upload'); // 'upload', 'questions', 'roster', 'requests', 'failures', 'documents'
 
   // Roster (Fase 4)
   const [roster, setRoster] = useState([]);
@@ -42,10 +40,6 @@ const Admin = () => {
   // Documentos PDF de profesor pendientes de aprobación (ronda 5)
   const [pendingDocs, setPendingDocs] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
-
-  useEffect(() => {
-    loadThemes();
-  }, []);
 
   const loadRoster = useCallback(async () => {
     setRosterLoading(true);
@@ -233,15 +227,6 @@ const Admin = () => {
     navigate(`/progreso/${u.id}`);
   };
 
-  const loadThemes = async () => {
-    try {
-      const data = await themeService.getThemes();
-      setThemes(data);
-    } catch (error) {
-      console.error('Error loading themes:', error);
-    }
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -274,17 +259,6 @@ const Admin = () => {
               data-testid="tab-questions"
             >
               Gestionar Preguntas
-            </button>
-            <button
-              onClick={() => setActiveTab('themes')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'themes'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              data-testid="tab-themes"
-            >
-              Ver Temas
             </button>
             <button
               onClick={() => setActiveTab('roster')}
@@ -353,57 +327,6 @@ const Admin = () => {
         {activeTab === 'questions' && (
           <div data-testid="questions-section">
             <QuestionsManager />
-          </div>
-        )}
-
-        {activeTab === 'themes' && (
-          <div className="bg-white rounded-lg shadow p-6" data-testid="themes-section">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Temas del Temario</h2>
-            <p className="text-sm text-gray-600 mb-6">Total de temas: {themes.length}</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* General Themes */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center justify-between">
-                  <span>Temas Generales</span>
-                  <span className="text-sm font-normal text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                    {themes.filter((t) => t.part === 'GENERAL').length} temas
-                  </span>
-                </h3>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {themes
-                    .filter((t) => t.part === 'GENERAL')
-                    .sort((a, b) => a.order - b.order)
-                    .map((theme) => (
-                      <div key={theme.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200" data-testid={`theme-${theme.code}`}>
-                        <div className="font-medium text-sm text-blue-900">{theme.code}</div>
-                        <div className="text-sm text-gray-700">{theme.name}</div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              {/* Specific Themes */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center justify-between">
-                  <span>Temas Específicos</span>
-                  <span className="text-sm font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded">
-                    {themes.filter((t) => t.part === 'SPECIFIC').length} temas
-                  </span>
-                </h3>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {themes
-                    .filter((t) => t.part === 'SPECIFIC')
-                    .sort((a, b) => a.order - b.order)
-                    .map((theme) => (
-                      <div key={theme.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200" data-testid={`theme-${theme.code}`}>
-                        <div className="font-medium text-sm text-purple-900">{theme.code}</div>
-                        <div className="text-sm text-gray-700">{theme.name}</div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
           </div>
         )}
 

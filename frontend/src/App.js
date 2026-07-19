@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ExamGuardProvider } from './context/ExamGuardContext';
 import PrivateRoute from './components/PrivateRoute';
 
 // Pages
@@ -175,7 +176,9 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <ExamGuardProvider>
+          <AppRoutes />
+        </ExamGuardProvider>
       </AuthProvider>
     </Router>
   );
