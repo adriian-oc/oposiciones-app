@@ -135,6 +135,10 @@ const Layout = ({ children }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  // El tab "Chat" también debe marcarse activo en /profesor/chat/:studentId (deep link desde el
+  // roster o la campanita), no solo en /chat -- de ahí este caso especial en vez del isActive genérico.
+  const isChatActive = () => isActive('/chat') || isActive('/profesor/chat');
+
   // Fuente única de los enlaces del nav -- se pintan tanto en la barra de escritorio como en el
   // menú desplegable de móvil, evitando duplicar el JSX y el riesgo de que se desincronicen.
   const navLinks = [
@@ -143,10 +147,13 @@ const Layout = ({ children }) => {
     { to: '/progreso', label: '📊 Mi Progreso', show: user?.role !== 'profesor' },
     { to: '/calendario', label: '📅 Calendario', show: user?.role === 'student' },
     { to: '/modo-foco', label: '🎯 Modo Foco', show: user?.role === 'student' },
-    { to: '/chat', label: '💬 Mi profesor', show: user?.role === 'student' },
     { to: '/profesor', label: 'Mis Alumnos', show: user?.role === 'profesor' },
-    { to: `/profesor/chat/${user?.id}`, label: '💬 Administración', show: user?.role === 'profesor' },
     { to: '/admin', label: 'Administración', show: user?.role === 'admin' || user?.role === 'curator' },
+    {
+      to: '/chat',
+      label: '💬 Chat',
+      show: user?.role === 'student' || user?.role === 'profesor' || user?.role === 'admin',
+    },
     { to: '/mi-perfil', label: '👤 Mi perfil', show: user?.role === 'profesor' || user?.role === 'student' },
   ].filter((link) => link.show);
 
@@ -169,7 +176,7 @@ const Layout = ({ children }) => {
                     to={link.to}
                     onClick={(e) => guardedNavigate(e, link.to)}
                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      (link.exact ? location.pathname === link.to : isActive(link.to))
+                      (link.to === '/chat' ? isChatActive() : link.exact ? location.pathname === link.to : isActive(link.to))
                         ? 'border-primary-500 text-gray-900'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                     }`}
@@ -339,7 +346,7 @@ const Layout = ({ children }) => {
                     }
                   }}
                   className={`block px-4 py-2 text-base font-medium ${
-                    (link.exact ? location.pathname === link.to : isActive(link.to))
+                    (link.to === '/chat' ? isChatActive() : link.exact ? location.pathname === link.to : isActive(link.to))
                       ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-500'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
                   }`}

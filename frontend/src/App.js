@@ -144,7 +144,7 @@ const AppRoutes = () => {
       <Route
         path="/chat"
         element={
-          <PrivateRoute allowedRoles={['student']}>
+          <PrivateRoute allowedRoles={['student', 'profesor', 'admin']}>
             <Chat />
           </PrivateRoute>
         }

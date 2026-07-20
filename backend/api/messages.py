@@ -22,9 +22,21 @@ async def get_unread_threads(current_user: dict = Depends(get_current_user)):
     return await get_message_service().get_unread_threads(current_user)
 
 
+@router.get("/threads")
+async def list_threads(current_user: dict = Depends(get_current_user)):
+    """Todos los hilos con conversación del usuario -- barra de contactos del chat."""
+    return await get_message_service().list_threads(current_user)
+
+
 @router.get("/{student_id}", response_model=List[MessageResponse])
 async def get_thread(student_id: str, current_user: dict = Depends(get_current_user)):
     return await get_message_service().get_thread(student_id, current_user)
+
+
+@router.get("/{student_id}/counterpart")
+async def get_thread_counterpart(student_id: str, current_user: dict = Depends(get_current_user)):
+    """Con quién se habla en este hilo -- para el header del chat (ver MessageService._counterpart)."""
+    return await get_message_service().get_thread_counterpart(student_id, current_user)
 
 
 @router.post("/{student_id}", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)

@@ -80,6 +80,59 @@ class MessageService:
         """Para el punto rojo del icono de notificaciones."""
         return bool(await self._unread_messages(current_user))
 
+    def _counterpart(self, thread_owner_id: str, current_user: dict, users_by_id: dict) -> dict:
+        """'Con quién se habla' en un hilo, para el header del chat y la barra de contactos --
+        distinto de 'quién soy yo dentro del hilo': un alumno mirando su propio hilo (thread_owner
+        == current_user) ve a su profesor, no a sí mismo; un profesor mirando el suyo ve
+        'Administración' (cualquier admin puede responder, no hay uno fijo, ver _authorize)."""
+        if thread_owner_id == current_user["id"]:
+            if current_user["role"] == "student":
+                profesor_id = current_user.get("assigned_profesor_id")
+                profesor = users_by_id.get(profesor_id) if profesor_id else None
+                return {
+                    "id": profesor_id,
+                    "display_name": (profesor or {}).get("display_name") or "Administración",
+                    "role": "profesor" if profesor else "admin",
+                }
+            return {"id": None, "display_name": "Administración", "role": "admin"}
+        owner = users_by_id.get(thread_owner_id) or {}
+        return {
+            "id": thread_owner_id,
+            "display_name": owner.get("display_name") or "Usuario",
+            "role": owner.get("role"),
+        }
+
+    async def get_thread_counterpart(self, student_id: str, current_user: dict) -> dict:
+        await self._authorize(current_user, student_id)
+        users_by_id = {u["id"]: u for u in await self.user_repo.list_all()}
+        return self._counterpart(student_id, current_user, users_by_id)
+
+    async def list_threads(self, current_user: dict) -> list:
+        """Barra de contactos: un hilo por cada thread_id relevante que ya tenga al menos un
+        mensaje (los que todavía no han hablado no aportan nada a una lista de conversaciones)."""
+        thread_ids = await self._relevant_thread_ids(current_user)
+        users_by_id = {u["id"]: u for u in await self.user_repo.list_all()}
+        threads = []
+        for thread_id in thread_ids:
+            last_message = await self.message_repo.get_last_message(thread_id)
+            if not last_message:
+                continue
+            read = await self.message_repo.get_read(current_user["id"], thread_id)
+            unread = (
+                last_message["sender_id"] != current_user["id"]
+                and (not read or last_message["created_at"] > read["last_read_at"])
+            )
+            counterpart = self._counterpart(thread_id, current_user, users_by_id)
+            threads.append({
+                "student_id": thread_id,
+                "display_name": counterpart["display_name"],
+                "last_message_text": last_message["text"],
+                "last_message_at": last_message["created_at"],
+                "unread": unread,
+            })
+        threads.sort(key=lambda t: t["last_message_at"], reverse=True)
+        return threads
+
     async def get_unread_threads(self, current_user: dict) -> list:
         """Para el desplegable de notificaciones: "el otro" del hilo es el dueño (student_id) si
         no es uno mismo (caso normal: alumno o profesor asignado escribiendo), o si no, quien

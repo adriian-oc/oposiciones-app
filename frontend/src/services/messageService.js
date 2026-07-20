@@ -20,4 +20,14 @@ export const messageService = {
     const response = await api.get('/api/messages/unread/threads');
     return response.data;
   },
+
+  async listThreads() {
+    const response = await api.get('/api/messages/threads');
+    return response.data;
+  },
+
+  async getCounterpart(studentId) {
+    const response = await api.get(`/api/messages/${studentId}/counterpart`);
+    return response.data;
+  },
 };
