@@ -15,4 +15,9 @@ export const messageService = {
     const response = await api.get('/api/messages/unread/summary');
     return response.data;
   },
+
+  async getUnreadThreads() {
+    const response = await api.get('/api/messages/unread/threads');
+    return response.data;
+  },
 };

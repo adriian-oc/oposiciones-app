@@ -40,9 +40,9 @@ class MessageService:
         await self.message_repo.mark_read(current_user["id"], student_id, datetime.utcnow())
         return thread
 
-    async def has_unread(self, current_user: dict) -> bool:
-        """Para el punto rojo del icono de notificaciones -- alumno mira su propio hilo,
-        profesor los de sus alumnos asignados, admin los de todos los alumnos."""
+    async def _unread_messages(self, current_user: dict) -> list:
+        """Último mensaje de cada hilo relevante que el usuario todavía no ha leído -- alumno
+        mira su propio hilo, profesor los de sus alumnos asignados, admin los de todos."""
         role = current_user["role"]
         if role == "student":
             student_ids = [current_user["id"]]
@@ -54,16 +54,43 @@ class MessageService:
                 and (role == "admin" or s.get("assigned_profesor_id") == current_user["id"])
             ]
         else:
-            return False
+            return []
 
+        unread = []
         for student_id in student_ids:
             last_message = await self.message_repo.get_last_message(student_id)
             if not last_message or last_message["sender_id"] == current_user["id"]:
                 continue
             read = await self.message_repo.get_read(current_user["id"], student_id)
             if not read or last_message["created_at"] > read["last_read_at"]:
-                return True
-        return False
+                unread.append(last_message)
+        return unread
+
+    async def has_unread(self, current_user: dict) -> bool:
+        """Para el punto rojo del icono de notificaciones."""
+        return bool(await self._unread_messages(current_user))
+
+    async def get_unread_threads(self, current_user: dict) -> list:
+        """Para el desplegable de notificaciones: un alumno ve quién le escribió (su profesor o
+        admin), un profesor/admin ve qué alumno escribió -- en ambos casos "el otro" del hilo,
+        no necesariamente el remitente del último mensaje visto desde el propio punto de vista."""
+        messages = await self._unread_messages(current_user)
+        if not messages:
+            return []
+        role = current_user["role"]
+        other_ids = {(m["sender_id"] if role == "student" else m["student_id"]) for m in messages}
+        others = {u["id"]: u for u in await self.user_repo.list_all() if u["id"] in other_ids}
+        threads = []
+        for m in messages:
+            other_id = m["sender_id"] if role == "student" else m["student_id"]
+            other = others.get(other_id)
+            threads.append({
+                "student_id": m["student_id"],
+                "display_name": (other or {}).get("display_name") or "Mensaje nuevo",
+                "last_message_at": m["created_at"],
+            })
+        threads.sort(key=lambda t: t["last_message_at"], reverse=True)
+        return threads
 
     async def send_message(self, student_id: str, data: MessageCreate, current_user: dict) -> dict:
         await self._authorize(current_user, student_id)

@@ -14,18 +14,20 @@ const Layout = ({ children }) => {
   const { guarded, setGuarded } = useExamGuard();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
-  const [hasUnread, setHasUnread] = useState(false);
+  const [unreadThreads, setUnreadThreads] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const hasUnread = unreadThreads.length > 0;
 
-  // Sondeo simple del punto rojo de notificaciones -- se re-consulta al cambiar de página (para
-  // que se apague nada más leer el hilo, ver MessageService.get_thread que marca como leído) y
-  // cada 30s de fondo para detectar mensajes nuevos sin recargar.
+  // Sondeo simple de hilos sin leer -- se re-consulta al cambiar de página (para que se apague
+  // nada más leer el hilo, ver MessageService.get_thread que marca como leído) y cada 30s de
+  // fondo para detectar mensajes nuevos sin recargar.
   useEffect(() => {
     if (!user || !['student', 'profesor', 'admin'].includes(user.role)) return;
     let cancelled = false;
     const checkUnread = () => {
-      messageService.getUnreadSummary()
-        .then((data) => { if (!cancelled) setHasUnread(data.has_unread); })
+      messageService.getUnreadThreads()
+        .then((data) => { if (!cancelled) setUnreadThreads(data); })
         .catch(() => {});
     };
     checkUnread();
@@ -36,7 +38,8 @@ const Layout = ({ children }) => {
     };
   }, [user, location.pathname]);
 
-  const notificationsLink = user?.role === 'student' ? '/chat' : user?.role === 'profesor' ? '/profesor' : '/admin';
+  // El alumno solo tiene un hilo (el suyo); profesor/admin tienen uno por alumno.
+  const threadLink = (thread) => (user?.role === 'student' ? '/chat' : `/profesor/chat/${thread.student_id}`);
 
   const handleLogout = async () => {
     await logout();
@@ -139,20 +142,50 @@ const Layout = ({ children }) => {
 
             {/* Escritorio: nombre + cerrar sesión visibles siempre */}
             <div className="hidden sm:flex sm:items-center">
-              <Link
-                to={notificationsLink}
-                onClick={(e) => guardedNavigate(e, notificationsLink)}
-                className="relative mr-4 p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                aria-label="Notificaciones"
-                data-testid="notifications-bell"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {hasUnread && (
-                  <span className="absolute top-0.5 right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" data-testid="notifications-dot" />
+              <div className="relative mr-4">
+                <button
+                  onClick={() => setNotifOpen((open) => !open)}
+                  className="relative p-1.5 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  aria-label="Notificaciones"
+                  data-testid="notifications-bell"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {hasUnread && (
+                    <span className="absolute top-0.5 right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" data-testid="notifications-dot" />
+                  )}
+                </button>
+                {notifOpen && (
+                  <>
+                    <button
+                      className="fixed inset-0 z-40 cursor-default"
+                      aria-label="Cerrar notificaciones"
+                      onClick={() => setNotifOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 z-50" data-testid="notifications-dropdown">
+                      {unreadThreads.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-gray-500">No hay mensajes nuevos.</p>
+                      ) : (
+                        unreadThreads.map((thread) => (
+                          <Link
+                            key={thread.student_id}
+                            to={threadLink(thread)}
+                            onClick={(e) => {
+                              setNotifOpen(false);
+                              guardedNavigate(e, threadLink(thread));
+                            }}
+                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="text-sm font-medium text-gray-900">{thread.display_name}</div>
+                            <div className="text-xs text-gray-500">Mensaje nuevo</div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </>
                 )}
-              </Link>
+              </div>
               <span className="text-sm text-gray-700 mr-4">
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </span>
@@ -177,22 +210,50 @@ const Layout = ({ children }) => {
 
             {/* Móvil: botón hamburguesa en vez de intentar encajar todo en la misma fila */}
             <div className="flex items-center gap-1 sm:hidden">
-              <Link
-                to={notificationsLink}
-                onClick={(e) => {
-                  setMobileMenuOpen(false);
-                  guardedNavigate(e, notificationsLink);
-                }}
-                className="relative p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                aria-label="Notificaciones"
-              >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {hasUnread && (
-                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+              <div className="relative">
+                <button
+                  onClick={() => setNotifOpen((open) => !open)}
+                  className="relative p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  aria-label="Notificaciones"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {hasUnread && (
+                    <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                  )}
+                </button>
+                {notifOpen && (
+                  <>
+                    <button
+                      className="fixed inset-0 z-40 cursor-default"
+                      aria-label="Cerrar notificaciones"
+                      onClick={() => setNotifOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                      {unreadThreads.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-gray-500">No hay mensajes nuevos.</p>
+                      ) : (
+                        unreadThreads.map((thread) => (
+                          <Link
+                            key={thread.student_id}
+                            to={threadLink(thread)}
+                            onClick={(e) => {
+                              setNotifOpen(false);
+                              setMobileMenuOpen(false);
+                              guardedNavigate(e, threadLink(thread));
+                            }}
+                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                          >
+                            <div className="text-sm font-medium text-gray-900">{thread.display_name}</div>
+                            <div className="text-xs text-gray-500">Mensaje nuevo</div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </>
                 )}
-              </Link>
+              </div>
               <button
                 onClick={() => setMobileMenuOpen((open) => !open)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
