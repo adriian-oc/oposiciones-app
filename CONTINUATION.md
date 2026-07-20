@@ -35,16 +35,18 @@ cuenta admin↔profesor sin re-login, chat admin↔profesor además de admin/pro
 de remitente de email, y que cada correo automático del sistema también queda registrado como
 mensaje dentro de la app).
 
-## Pendiente — bloqueado, necesita respuesta del usuario
+## Cerrado — importar progreso de alumnos de "la página antigua"
 
-**Importar el progreso de alumnos de "la página antigua".** Investigado a fondo dos veces: (1)
+Investigado a fondo tres veces. Los dos primeros intentos no encontraron nada real: (1)
 `ADOC_Cuadernos_Online.html` en el escritorio del usuario es una app 100% cliente que guarda
 todo en el `localStorage` del navegador de cada alumno — no hay servidor, no hay nada que
-importar de ahí. (2) El repo de GitHub que el usuario señaló como "la página antigua"
-(`origin`) es literalmente el mismo código de este proyecto (0 commits de diferencia con
-`pagina-final`), sin ningún volcado de datos. No se ha encontrado ninguna fuente real de ese
-progreso histórico en ningún sitio. Pendiente: volver a preguntar si hay otra ubicación en
-mente, o dar el tema por cerrado definitivamente.
+importar de ahí. (2) El repo de GitHub que se señaló primero como "la página antigua"
+(`origin`) es literalmente el mismo código de este proyecto, sin volcado de datos. (3) La
+página antigua real resultó ser otra: `github.com/adriian-oc/adoc-webapp` (código local en
+`/Users/adrian/Desktop/Adoc/webapp`), una app Firebase (Auth + Firestore, proyecto `adoc-9e397`,
+desplegada en `adoc-9e397.web.app`/`academia-adoc.web.app`) con progreso real de alumnos en
+`progress/{uid}` de Firestore — esta sí era una fuente real. El usuario decidió (2026-07-20) no
+migrarla: se cierra el tema definitivamente, no hace falta volver a investigarlo.
 
 ## Pedido nuevo, sin empezar todavía
 
