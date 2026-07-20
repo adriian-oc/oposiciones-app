@@ -106,6 +106,7 @@ const Layout = ({ children }) => {
     { to: '/modo-foco', label: '🎯 Modo Foco', show: user?.role === 'student' },
     { to: '/chat', label: '💬 Mi profesor', show: user?.role === 'student' },
     { to: '/profesor', label: 'Mis Alumnos', show: user?.role === 'profesor' },
+    { to: `/profesor/chat/${user?.id}`, label: '💬 Administración', show: user?.role === 'profesor' },
     { to: '/admin', label: 'Administración', show: user?.role === 'admin' || user?.role === 'curator' },
     { to: '/mi-perfil', label: '👤 Mi perfil', show: user?.role === 'profesor' || user?.role === 'student' },
   ].filter((link) => link.show);

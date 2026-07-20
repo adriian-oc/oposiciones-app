@@ -16,7 +16,11 @@ class MessageCreate(BaseModel):
 
 class MessageInDB(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    student_id: str  # clave del hilo -- 1 hilo por alumno (alumno + su profesor/admin)
+    # Clave del hilo: pese al nombre, es el id de CUALQUIER usuario no-admin que "es dueño" del
+    # hilo -- un alumno (hilo visible para el alumno, su profesor asignado y cualquier admin) o
+    # un profesor (hilo privado con administración, visible para ese profesor y cualquier admin).
+    # Se mantiene el nombre student_id por compatibilidad con los hilos de alumno ya existentes.
+    student_id: str
     sender_id: str
     text: str
     created_at: datetime = Field(default_factory=datetime.utcnow)

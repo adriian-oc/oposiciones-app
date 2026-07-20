@@ -96,14 +96,16 @@ const RosterTable = ({
           👤 Perfil
         </button>
       )}
+      {(u.role === 'student' || u.role === 'profesor') && (
+        <Link
+          to={`/profesor/chat/${u.id}`}
+          className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
+        >
+          💬 Chat
+        </Link>
+      )}
       {u.role === 'student' && (
         <>
-          <Link
-            to={`/profesor/chat/${u.id}`}
-            className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
-          >
-            💬 Chat
-          </Link>
           <button onClick={() => onEditContent(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
             ✏️ Acceso
           </button>

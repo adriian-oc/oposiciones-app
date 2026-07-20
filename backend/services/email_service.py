@@ -39,12 +39,17 @@ class EmailService:
         except Exception as e:
             logger.error(f"Fallo al enviar email a {to_email}: {e}")
 
-    def send_new_message_notice(self, to_email: str, to_name: str, sender_name: str) -> None:
-        subject = f"Tienes un mensaje nuevo de {sender_name} en ADOC"
+    def send_new_message_notice(self, to_email: str, to_name: str, sender_name: str, chat_link: str, count: int = 1) -> None:
+        if count > 1:
+            subject = f"Tienes {count} mensajes nuevos de {sender_name} en ADOC"
+            body = f"<strong>{sender_name}</strong> te ha escrito {count} mensajes nuevos en ADOC."
+        else:
+            subject = f"Tienes un mensaje nuevo de {sender_name} en ADOC"
+            body = f"<strong>{sender_name}</strong> te ha escrito un mensaje nuevo en ADOC."
         html = f"""
         <p>Hola {to_name},</p>
-        <p><strong>{sender_name}</strong> te ha escrito un mensaje nuevo en ADOC.</p>
-        <p><a href="{settings.frontend_base_url}/chat">Entra aquí para leerlo y responder</a>.</p>
+        <p>{body}</p>
+        <p><a href="{chat_link}">Entra aquí para leerlo y responder</a>.</p>
         """
         self.send(to_email, to_name, subject, html)
 
