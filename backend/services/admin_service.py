@@ -5,7 +5,9 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 
 from config.settings import settings
+from models.message import MessageInDB
 from models.user import UserCreate, UserInDB, UserUpdate
+from repositories.message_repository import MessageRepository
 from repositories.user_repository import UserRepository
 from repositories.progress_repository import ProgressRepository
 from services.auth_service import hash_password, generate_reset_token, reset_token_expiry
@@ -53,8 +55,19 @@ class AdminService:
     def __init__(self):
         self.user_repo = UserRepository()
         self.progress_repo = ProgressRepository()
+        self.message_repo = MessageRepository()
         self.email_service = EmailService()
         self.notification_service = NotificationService()
+
+    async def _record_system_message(self, user_id: str, text: str) -> None:
+        """Cada correo automático (bienvenida, restablecer contraseña, aviso de migración...)
+        deja también constancia en Mensajes -- así queda un histórico dentro de la propia app,
+        no solo en la bandeja de email real, y el propio hilo ya sirve para responder. Firmado
+        como el admin real (hay solo uno en la práctica) porque es quien manda estos correos."""
+        admin = next((u for u in await self.user_repo.list_all() if u.get("role") == "admin"), None)
+        if not admin:
+            return
+        await self.message_repo.create(MessageInDB(student_id=user_id, sender_id=admin["id"], text=text))
 
     async def list_students(self, viewer_staff_id: str = None):
         from services.progress_service import ProgressService
@@ -104,8 +117,11 @@ class AdminService:
         link = f"{settings.frontend_base_url}/reset-password?token={token}"
         if is_new_account:
             self.email_service.send_welcome_email(email, display_name or email, link)
+            message_text = f"Te hemos creado una cuenta en ADOC. Antes de entrar, fija tu contraseña aquí: {link}"
         else:
             self.email_service.send_password_reset_email(email, display_name or email, link)
+            message_text = f"Te hemos enviado un enlace para restablecer tu contraseña: {link}"
+        await self._record_system_message(user_id, message_text)
         return link
 
     async def update_student(self, user_id: str, update: UserUpdate) -> dict:
@@ -166,5 +182,11 @@ class AdminService:
                 reset_link=link,
                 trial_days=trial_days,
             )
+            await self._record_system_message(student["id"], (
+                f"Hemos migrado ADOC a una plataforma nueva. Tienes acceso a todo el material "
+                f"durante los próximos {trial_days} días, y entre las mejores puntuaciones de "
+                f"este periodo cederemos el acceso completo definitivo. Confirma tu contraseña "
+                f"aquí: {link}"
+            ))
             sent += 1
         return sent
