@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useExamGuard } from '../context/ExamGuardContext';
 import ConfirmDialog from './ConfirmDialog';
+import Avatar from './Avatar';
 import { messageService } from '../services/messageService';
 import { notificationService } from '../services/notificationService';
 
@@ -237,7 +238,8 @@ const Layout = ({ children }) => {
                   </>
                 )}
               </div>
-              <span className="text-sm text-gray-700 mr-4">
+              <span className="flex items-center gap-2 text-sm text-gray-700 mr-4">
+                <Avatar user={user} size="sm" />
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </span>
               {user?.linked_user_id && (
@@ -356,7 +358,8 @@ const Layout = ({ children }) => {
               ))}
             </div>
             <div className="pt-4 pb-3 border-t border-gray-200 px-4">
-              <div className="text-sm text-gray-700 mb-3">
+              <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                <Avatar user={user} size="sm" />
                 {user?.display_name} <span className="text-xs text-gray-500">({user?.role})</span>
               </div>
               {user?.linked_user_id && (

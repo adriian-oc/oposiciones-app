@@ -35,4 +35,13 @@ export const adminService = {
     const response = await api.post(`/api/admin/students/${userId}/mark-reviewed`);
     return response.data;
   },
+
+  async uploadAvatar(userId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/api/admin/students/${userId}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };

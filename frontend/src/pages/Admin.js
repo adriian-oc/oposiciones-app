@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import Avatar from '../components/Avatar';
 import QuestionUpload from '../components/QuestionUpload';
 import QuestionsManager from '../components/QuestionsManager';
 import RosterTable from '../components/RosterTable';
@@ -209,6 +210,14 @@ const Admin = () => {
     await adminService.updateStudent(profileEditingUser.id, payload);
     setProfileEditingUser(null);
     loadRoster();
+  };
+
+  // Subir la foto es una llamada aparte (multipart) del guardado del resto del perfil (JSON) --
+  // se sube al momento y se refleja tanto en el modal abierto como en la tabla de fondo, sin
+  // esperar a que se pulse "Guardar".
+  const handleAvatarUploaded = (updatedUser) => {
+    setProfileEditingUser(updatedUser);
+    setRoster((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
   };
 
   const handleViewProgress = (u) => {
@@ -555,6 +564,7 @@ const Admin = () => {
           roster={roster}
           onClose={() => setProfileEditingUser(null)}
           onSave={handleSaveProfile}
+          onAvatarUploaded={handleAvatarUploaded}
         />
       )}
 
@@ -768,7 +778,7 @@ const ExpiryEditorModal = ({ user, onClose, onSave }) => {
 
 const PREP_TIME_OPTIONS = ['', 'Sin empezar', 'Menos de 6 meses', '6 meses - 1 año', '1 - 2 años', 'Más de 2 años'];
 
-const ProfileEditorModal = ({ user, roster, onClose, onSave }) => {
+const ProfileEditorModal = ({ user, roster, onClose, onSave, onAvatarUploaded }) => {
   const profile = user.profile || {};
   const isStudent = user.role === 'student';
   const [fullName, setFullName] = useState(profile.full_name || user.display_name || '');
@@ -777,10 +787,29 @@ const ProfileEditorModal = ({ user, roster, onClose, onSave }) => {
   const [prepWith, setPrepWith] = useState(profile.prep_with || '');
   const [weakPoints, setWeakPoints] = useState(profile.weak_points || '');
   const [linkedUserId, setLinkedUserId] = useState(user.linked_user_id || '');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const fileInputRef = useRef(null);
 
   const linkableAccounts = (roster || []).filter(
     (u) => (u.role === 'admin' || u.role === 'profesor') && u.id !== user.id
   );
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarError('');
+    setUploadingAvatar(true);
+    try {
+      const updated = await adminService.uploadAvatar(user.id, file);
+      onAvatarUploaded(updated);
+    } catch (err) {
+      setAvatarError(err.response?.data?.detail || 'No se pudo subir la foto');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -801,6 +830,27 @@ const ProfileEditorModal = ({ user, roster, onClose, onSave }) => {
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Perfil de {user.display_name}</h3>
+        <div className="flex items-center gap-4 mb-4">
+          <Avatar user={user} size="lg" />
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto'}
+            </button>
+            {avatarError && <p className="text-xs text-red-600 mt-1">{avatarError}</p>}
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Nombre completo</label>

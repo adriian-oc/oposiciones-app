@@ -56,6 +56,9 @@ class UserInDB(UserBase):
     # Acceso completo temporal (p.ej. campaña "prueba todo el material 3 días") que no toca
     # allowed_content -- caduca solo, ver ExamService._check_access_key.
     temp_full_access_until: Optional[datetime] = None
+    # Ruta relativa dentro de uploads/ (p.ej. "avatars/<uuid>.jpg"), servida desde /uploads --
+    # mismo patrón y misma limitación de disco local que document_submission_service.py.
+    avatar_path: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str
@@ -71,6 +74,7 @@ class UserResponse(UserBase):
     profile: Optional[Profile] = None
     linked_user_id: Optional[str] = None
     temp_full_access_until: Optional[datetime] = None
+    avatar_path: Optional[str] = None
     has_novedades: Optional[bool] = None  # solo se rellena al listar para un admin/profesor concreto
     progress_summary: Optional[dict] = None  # solo se rellena al listar (AdminService.list_students)
 

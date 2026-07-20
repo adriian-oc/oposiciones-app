@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import Avatar from '../components/Avatar';
 import { authService } from '../services/authService';
 
 const PREP_TIME_OPTIONS = ['', 'Sin empezar', 'Menos de 6 meses', '6 meses - 1 año', '1 - 2 años', 'Más de 2 años'];
@@ -24,6 +25,25 @@ const MiPerfil = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const fileInputRef = useRef(null);
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo si hay que reintentar
+    if (!file) return;
+    setAvatarError('');
+    setUploadingAvatar(true);
+    try {
+      await authService.uploadOwnAvatar(file);
+      await refreshUser();
+    } catch (err) {
+      setAvatarError(err.response?.data?.detail || 'No se pudo subir la foto');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,6 +90,27 @@ const MiPerfil = () => {
           </p>
         )}
         <div className="bg-white shadow-md rounded-lg p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <Avatar user={user} size="lg" />
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="text-sm px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto'}
+              </button>
+              {avatarError && <p className="text-xs text-red-600 mt-1">{avatarError}</p>}
+            </div>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Nombre completo</label>

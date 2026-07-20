@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, UploadFile, File, status
 from typing import List
 
 from models.user import UserCreate, UserResponse, UserUpdate
 from services.admin_service import AdminService
+from services.avatar_service import AvatarService
 from middleware.auth import require_role
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -73,6 +74,17 @@ async def mark_reviewed(
     sin afectar al badge de otros profesores/admins que también vean al mismo alumno."""
     await get_admin_service().mark_reviewed(user_id, current_user["id"], is_admin=current_user["role"] == "admin")
     return {"message": "ok"}
+
+
+@router.post("/students/{user_id}/avatar", response_model=UserResponse)
+async def upload_student_avatar(
+    user_id: str,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_role(["admin"])),
+):
+    """Admin cambia la foto de perfil de cualquier usuario del roster."""
+    updated = await AvatarService().upload(user_id, file)
+    return UserResponse(**updated)
 
 
 @router.post("/students/migration-announcement")

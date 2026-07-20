@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Avatar from './Avatar';
 
 // La tabla de roster se ve como tarjetas apiladas en móvil, no una tabla con scroll horizontal
 // (inusable para un admin no técnico en el teléfono): dos layouts Tailwind (tabla oculta en
@@ -147,7 +148,13 @@ const RosterTable = ({
         <tbody className="bg-white divide-y divide-gray-200">
           {list.map((u) => (
             <tr key={u.id}>
-              <td className="px-4 py-3 text-sm text-gray-900">{u.display_name}{novedadesBadge(u)}</td>
+              <td className="px-4 py-3 text-sm text-gray-900">
+                <div className="flex items-center gap-2">
+                  <Avatar user={u} size="sm" />
+                  {u.display_name}
+                  {novedadesBadge(u)}
+                </div>
+              </td>
               <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
               <td className="px-4 py-3 text-sm text-gray-600">{roleLabel[u.role] || u.role}</td>
               <td className="px-4 py-3">{expiryBadge(u)}</td>
@@ -166,7 +173,11 @@ const RosterTable = ({
     <div className="sm:hidden space-y-3">
       {list.map((u) => (
         <div key={u.id} className="border border-gray-200 rounded-lg p-4">
-          <div className="font-medium text-gray-900">{u.display_name}{novedadesBadge(u)}</div>
+          <div className="font-medium text-gray-900 flex items-center gap-2">
+            <Avatar user={u} size="sm" />
+            {u.display_name}
+            {novedadesBadge(u)}
+          </div>
           <div className="text-sm text-gray-600">{u.email}</div>
           <div className="text-sm text-gray-600 mt-1 flex flex-wrap items-center gap-2">
             <span>{roleLabel[u.role] || u.role}</span>

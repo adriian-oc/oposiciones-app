@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 
 from models.auth import LoginRequest, TokenResponse, ResetPasswordRequest
 from models.user import UserResponse, UserUpdate, SelfProfileUpdate
@@ -10,6 +10,7 @@ from services.auth_service import (
     hash_password,
     hash_reset_token,
 )
+from services.avatar_service import AvatarService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -71,4 +72,14 @@ async def update_own_profile(data: SelfProfileUpdate, current_user: dict = Depen
     user_repo = UserRepository()
     update = UserUpdate(**data.model_dump(exclude_unset=True))
     updated = await user_repo.update_fields(current_user["id"], update)
+    return UserResponse(**updated)
+
+
+@router.post("/me/avatar", response_model=UserResponse)
+async def upload_own_avatar(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Autoservicio: cualquier usuario cambia su propia foto de perfil."""
+    updated = await AvatarService().upload(current_user["id"], file)
     return UserResponse(**updated)

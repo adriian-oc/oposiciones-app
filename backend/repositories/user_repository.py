@@ -57,6 +57,9 @@ class UserRepository:
             },
         )
 
+    async def set_avatar_path(self, user_id: str, avatar_path: str) -> None:
+        await self.collection.update_one({"id": user_id}, {"$set": {"avatar_path": avatar_path}})
+
     async def email_exists(self, email: str) -> bool:
         return await self.collection.find_one({"email": email}) is not None
 
