@@ -32,8 +32,10 @@ Antes de nada: `git log --oneline -30` para ver el estado exacto (hay muchísimo
 sesiones recientes: permisos de perfil por rol, calendario de estudio editable por
 admin/profesor, sistema de notificaciones con campanita, Modo Foco/Pomodoro, cambio rápido de
 cuenta admin↔profesor sin re-login, chat admin↔profesor además de admin/profesor↔alumno, cambio
-de remitente de email, y que cada correo automático del sistema también queda registrado como
-mensaje dentro de la app).
+de remitente de email, cada correo automático registrado también como mensaje dentro de la app,
+progresión fija del calendario por temario (ronda 2026-07-20), rediseño de Chat con barra de
+contactos, foto de perfil, correos con plantilla visual común, y actividad de email de Brevo en
+Admin — ver detalle de esta última ronda más abajo).
 
 ## Cerrado — importar progreso de alumnos de "la página antigua"
 
@@ -48,73 +50,74 @@ desplegada en `adoc-9e397.web.app`/`academia-adoc.web.app`) con progreso real de
 `progress/{uid}` de Firestore — esta sí era una fuente real. El usuario decidió (2026-07-20) no
 migrarla: se cierra el tema definitivamente, no hace falta volver a investigarlo.
 
-## Pedido nuevo, sin empezar todavía
+## Hecho en la ronda del 2026-07-20 (los 5 pedidos de la ronda anterior)
 
-### 1. Algoritmo de generación del calendario de estudio (mezcla de contenido nuevo)
+Los 5 puntos de abajo estaban "sin empezar" y ya están implementados, verificados
+(pytest + eslint + build + navegador con Browser pane) y pusheados a los dos remotos.
 
-Archivo: `backend/services/study_calendar_service.py::_build_priority_queue`. Ya existe una
-mezcla 65% repasos vencidos (SM-2) / 35% contenido nuevo — **eso se queda igual**. Lo que pide el
-usuario es cambiar el ORDEN en que se eligen los temas para el contenido nuevo, a esta secuencia:
+### 1. Algoritmo de generación del calendario de estudio — hecho
 
-1. **Una sola vez al principio**: lectura comprensiva de 1 tema al día (a confirmar con el
-   usuario el alcance exacto: ¿todos los temas, específicos y generales, o solo unos?).
-2. Los 13 temas específicos, en orden (1 al 13).
-3. Los temas generales, tema 1 al 13 de la parte general.
-4. 2ª vuelta de los 13 temas específicos.
-5. El resto de temas generales (los que no entraron en el paso 3 — revisar cuántos temas
-   generales hay en total en la colección `themes`, área `ttgen`, seguramente más de 13).
-6. Al acabar la vuelta completa, se repite desde el paso 2 (sin repetir la lectura comprensiva).
+`backend/services/study_calendar_service.py::_build_new_queue` (reescrito por completo,
+`_build_priority_queue` y el 65/35 con el repaso SM-2 no se tocaron). Conteos reales de temas
+(no los 13/13 que se asumía al principio): **15 temas específicos, 23 generales** (bloque 1 =
+primeros 13, bloque resto = los otros 10), leídos siempre en vivo de `themes`, nunca hardcodeados.
 
-Actividades según el tipo de tema del día:
-- **Tema general** → test completo de Teoría de ese tema + un supuesto práctico.
-- **Tema específico** → el cuadernillo de ese mismo tema + un supuesto práctico.
-- **Si sobra tiempo el mismo día** (según las horas configuradas), seguir con el siguiente
-  elemento de la progresión ese mismo día, no esperar a mañana.
+Decisiones que tomó el usuario al aclarar (por si hace falta revisarlas):
+- Lectura comprensiva inicial (una sola vez, `kind="reading"`, sin `content_unit_key`, no se
+  repite nunca — estado persistido vía `StudyCalendarRepository.get_completed_reading_theme_ids`):
+  cubre los 15 específicos + el bloque 1 de 13 generales (28 temas). El resto de generales
+  (14–23) NO tienen día de lectura dedicado, entran directo en la rotación de práctica.
+- Supuestos sueltos (sin `theme_id`, banco `Supuesto N`): se reparten en round-robin dentro de
+  la rotación, uno por cada tema del día (spec = cuadernillo+supuesto, general = Test de
+  Teoría+supuesto) — no hace falta lógica de "horas sobrantes" aparte porque el sistema de
+  bloques de 45 min ya avanza varios elementos el mismo día si hay horas de sobra.
+- Ciclo que se repite para siempre tras la lectura: específicos → generales bloque 1 → 2ª vuelta
+  específicos → resto generales → vuelta a empezar (lo gestiona `itertools.cycle()` en
+  `regenerate_calendar`, la lista que devuelve `_build_new_queue` ya no lleva la lectura dentro
+  para que no se repita al dar la vuelta).
 
-Antes de implementar, aclarar con el usuario: (a) alcance exacto de la lectura comprensiva
-inicial, (b) qué pasa con los supuestos generales sueltos sin `theme_id` (¿entran en la rotación
-o quedan fuera?), (c) número exacto de temas generales en total.
+De paso se arregló un bug ya existente que afectaba directamente a esta función: el botón
+"Practicar" del calendario (`frontend/src/pages/StudyCalendar.js::handleStartPractice`) llamaba
+siempre a `startPractice` (solo vale para practical_sets), y con `content_unit_key` tipo
+`ttgen:<theme_id>` (Test de Teoría) fallaba — ahora bifurca igual que `Cuadernos.js`.
 
-### 2. Rediseño de Chat
+### 2. Rediseño de Chat — hecho
 
-- Dentro de un chat, mostrar arriba con quién se está hablando (hoy `Chat.js` solo pone el
-  título genérico "Chat", sin nombre del otro lado del hilo).
-- Barra lateral izquierda con lista de contactos (icono + nombre) de todos los alumnos con
-  conversación, para cambiar de hilo sin volver al roster — relevante para profesor/admin.
-- Pestaña "💬 Chat" fija en el nav superior, en TODAS las vistas y para todos los roles (hoy el
-  acceso es indirecto: alumno vía "Mi profesor", profesor vía roster o su hilo con
-  administración, admin vía roster). Tocar `frontend/src/components/Layout.js` (`navLinks`).
+- Header con "Chat con {nombre}" vía `GET /api/messages/{id}/counterpart`
+  (`MessageService._counterpart` — alumno ve a su profesor asignado, profesor en su propio hilo
+  ve "Administración", admin ve el nombre real del alumno/profesor).
+- Barra de contactos para profesor/admin vía `GET /api/messages/threads`
+  (`MessageService.list_threads`, solo hilos con al menos un mensaje).
+- Pestaña "💬 Chat" fija en el nav para alumno/profesor/admin, todas apuntan a `/chat`
+  (`frontend/src/pages/Chat.js` decide el hilo activo según rol: alumno siempre el suyo,
+  profesor por defecto el de administración, admin el más reciente de la lista si no hay
+  parámetro en la URL). Ruta `/chat` ahora abierta a los 3 roles en `App.js` (antes solo
+  `student`); `/profesor/chat/:studentId` se mantiene para deep-links (roster, campanita).
 
-### 3. Foto de perfil
+### 3. Foto de perfil — hecho
 
-Subir/cambiar foto de perfil en `frontend/src/pages/MiPerfil.js` (autoservicio) y en
-`ProfileEditorModal` dentro de `Admin.js` (edición por admin). Dónde guardar el archivo: mismo
-patrón que los PDFs de profesor (`backend/services/document_submission_service.py`, hoy disco
-local, ya documentado ahí como solución de desarrollo, no definitiva para un despliegue real —
-aplica el mismo aviso). Mostrar la foto donde ya se ve el nombre (header, roster).
+`backend/services/avatar_service.py` (mismo patrón de disco local que los PDFs de profesor, con
+el mismo aviso de que no es solución definitiva para producción real). Endpoints
+`POST /api/auth/me/avatar` (autoservicio) y `POST /api/admin/students/{id}/avatar` (admin).
+Componente `frontend/src/components/Avatar.js` (foto o inicial de respaldo) reutilizado en
+header (`Layout.js`), roster (`RosterTable.js`), `MiPerfil.js` y `ProfileEditorModal` en `Admin.js`.
 
-### 4. Mejorar los correos automáticos
+### 4. Mejorar los correos automáticos — hecho
 
-- Rediseñar el contenido del correo "Bienvenido/a a ADOC — activa tu cuenta"
-  (`backend/services/email_service.py::send_welcome_email`) — el usuario solo pidió "hazlo
-  mejor" sin más detalle, usar criterio (más cálido, más claro, con logo).
-- El aviso agrupado de mensajes nuevos (`send_new_message_notice`, disparado desde
-  `MessageService._send_digest_after_delay` en `backend/services/message_service.py`) hoy solo
-  dice "tienes un mensaje nuevo, entra aquí" sin mostrar el texto. Pide que el correo incluya el
-  contenido real de los mensajes escritos, no solo el aviso genérico — pasar los textos de
-  `new_messages` a `send_new_message_notice` y mostrarlos en la plantilla (escapar HTML por si
-  el texto de un alumno tuviera caracteres especiales).
+`backend/services/email_service.py`: envoltorio visual común `_layout`/`_button` (logo real vía
+`frontend_base_url` + `<meta charset="utf-8">`, sin el charset las tildes llegaban mal) usado por
+los 4 correos. Bienvenida reescrita explicando qué hay dentro de ADOC. El aviso agrupado de
+mensajes (`send_new_message_notice`) ahora incluye el texto real de cada mensaje
+(`html.escape` sobre nombre y texto, viene de un alumno/profesor) en vez de solo el aviso genérico.
 
-### 5. Traer el "Actividad reciente" de Brevo a la propia web
+### 5. Actividad de Email de Brevo en Admin — hecho
 
-El usuario vio en Brevo (Transaccional → Tiempo real/Estadísticas) una tabla de actividad de
-emails (Enviado/Entregado/Abierto/Clicado/Bloqueado, Fecha, Asunto, Remitente, Destinatarios) y
-pregunta si se puede traer al panel de Admin. Es viable: Brevo tiene API de eventos
-transaccionales (`GET https://api.brevo.com/v3/smtp/statistics/events`, mismo `BREVO_API_KEY`
-que ya usa `EmailService`). Plan: endpoint backend admin-only (p.ej.
-`GET /api/admin/email-activity`) que llama a esa API y devuelve los eventos; nueva tarjeta en
-`Admin.js` (mismo patrón tarjeta+contenido que las demás) con una tabla. La llamada a Brevo
-SIEMPRE desde el backend — nunca exponer `BREVO_API_KEY` al frontend.
+`GET /api/admin/email-activity` (admin-only, `backend/api/admin.py`) llama a
+`EmailService.get_recent_activity` (API de eventos de Brevo, mismo `BREVO_API_KEY`, la llamada
+vive siempre en el backend). Nueva tarjeta "Actividad de Email" en `Admin.js` con tabla
+Estado/Fecha/Asunto/Remitente/Destinatario. Sin `BREVO_API_KEY` en local (como el resto de
+envío) devuelve `[]` y la tarjeta muestra "Todavía no hay actividad registrada" — no se ha podido
+verificar con datos reales de Brevo en esta ronda, solo el estado vacío.
 
 ## Ya aclarado con el usuario (no repetir la explicación)
 
