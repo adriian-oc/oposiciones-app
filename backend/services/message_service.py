@@ -206,12 +206,20 @@ class MessageService:
                 if owner.get("role") == "student"
                 else f"{settings.frontend_base_url}/profesor/chat/{thread_owner_id}"
             )
+            message_payload = [
+                {
+                    "sender_name": (users_by_id.get(m["sender_id"]) or {}).get("display_name") or "tu profesor",
+                    "text": m["text"],
+                }
+                for m in new_messages
+            ]
             self.email_service.send_new_message_notice(
                 to_email=owner["email"],
                 to_name=owner.get("display_name") or owner["email"],
                 sender_name=", ".join(sender_names),
                 chat_link=chat_link,
                 count=len(new_messages),
+                messages=message_payload,
             )
         except Exception as e:
             logger.error(f"Fallo al enviar el aviso agrupado de mensajes a {thread_owner_id}: {e}")
