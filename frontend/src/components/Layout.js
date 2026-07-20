@@ -13,6 +13,7 @@ const NOTIF_ICONS = {
   content_access: '📖',
   document_pending: '📄',
   access_request_pending: '📨',
+  content_update: '🆕',
 };
 
 const Layout = ({ children }) => {
@@ -50,8 +51,9 @@ const Layout = ({ children }) => {
     };
   }, [user, location.pathname]);
 
-  // El alumno solo tiene un hilo (el suyo); profesor/admin tienen uno por alumno.
-  const threadLink = (thread) => (user?.role === 'student' ? '/chat' : `/profesor/chat/${thread.student_id}`);
+  // thread.student_id ya trae la clave exacta del canal (con o sin sufijo ':admin', ver
+  // ADMIN_CHANNEL_SUFFIX en message_service.py) -- vale igual para alumno, profesor y admin.
+  const threadLink = (thread) => `/profesor/chat/${thread.student_id}`;
 
   const handleNotificationClick = (notification) => {
     notificationService.markRead(notification.id).catch(() => {});

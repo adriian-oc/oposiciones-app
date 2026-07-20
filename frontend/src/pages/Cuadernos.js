@@ -192,7 +192,14 @@ const Cuadernos = () => {
           rel="noopener noreferrer"
           className={`${baseClass} text-gray-800 hover:bg-primary-50`}
         >
-          <span>{unit.label}</span>
+          <span className="flex items-center gap-2">
+            {unit.label}
+            {meta.unit.is_new && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 rounded">
+                New
+              </span>
+            )}
+          </span>
           <span className="text-xs font-semibold text-primary-600 flex-shrink-0">⬇ PDF</span>
         </a>
       );

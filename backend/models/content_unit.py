@@ -8,6 +8,7 @@ class ContentUnitBase(BaseModel):
     kind: str  # "quiz" | "pdf" | "coming_soon"
     pdf_url: Optional[str] = None
     order: int = 0
+    is_new: bool = False  # marca "NEW" en la web tras una actualización de contenido
 
 class ContentUnitCreate(ContentUnitBase):
     pass

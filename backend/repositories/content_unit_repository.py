@@ -25,3 +25,8 @@ class ContentUnitRepository:
 
     async def get_one(self, area_id: str, theme_id: str) -> Optional[dict]:
         return await self.collection.find_one({"area_id": area_id, "theme_id": theme_id}, {"_id": 0})
+
+    async def set_is_new(self, area_id: str, theme_id: str, is_new: bool) -> None:
+        await self.collection.update_one(
+            {"area_id": area_id, "theme_id": theme_id}, {"$set": {"is_new": is_new}}
+        )
