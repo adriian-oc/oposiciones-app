@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
+from typing import Optional
 import uuid
 
 class MessageCreate(BaseModel):
@@ -22,7 +23,13 @@ class MessageInDB(BaseModel):
     # Se mantiene el nombre student_id por compatibilidad con los hilos de alumno ya existentes.
     student_id: str
     sender_id: str
-    text: str
+    text: str = ""
+    # Ruta relativa dentro de uploads/ (p.ej. "chat/<uuid>.pdf"), servida desde /uploads -- mismo
+    # patrón que avatar_path/document file_path. Un mensaje con adjunto puede llevar texto vacío
+    # (pie de foto opcional), ver ChatAttachmentService.
+    attachment_path: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_type: Optional[str] = None  # "image" | "file"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class MessageResponse(BaseModel):
@@ -30,6 +37,9 @@ class MessageResponse(BaseModel):
     student_id: str
     sender_id: str
     text: str
+    attachment_path: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_type: Optional[str] = None
     created_at: datetime
 
 class MessageReadInDB(BaseModel):

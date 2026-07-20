@@ -30,4 +30,18 @@ export const messageService = {
     const response = await api.get(`/api/messages/${studentId}/counterpart`);
     return response.data;
   },
+
+  async sendAttachment(studentId, file, caption = '') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('caption', caption);
+    const response = await api.post(`/api/messages/${studentId}/attachment`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async deleteThread(studentId) {
+    await api.delete(`/api/messages/${studentId}`);
+  },
 };

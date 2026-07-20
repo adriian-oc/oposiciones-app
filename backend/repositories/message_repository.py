@@ -35,6 +35,10 @@ class MessageRepository:
             {"user_id": user_id, "student_id": student_id}, {"_id": 0}
         )
 
+    async def delete_thread(self, student_id: str) -> None:
+        await self.collection.delete_many({"student_id": student_id})
+        await self.reads_collection.delete_many({"student_id": student_id})
+
     async def mark_read(self, user_id: str, student_id: str, when: datetime) -> None:
         await self.reads_collection.update_one(
             {"user_id": user_id, "student_id": student_id},

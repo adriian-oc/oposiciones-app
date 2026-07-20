@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from typing import List
 
 from models.message import MessageCreate, MessageResponse
@@ -46,3 +46,19 @@ async def send_message(
     current_user: dict = Depends(get_current_user),
 ):
     return await get_message_service().send_message(student_id, data, current_user)
+
+
+@router.post("/{student_id}/attachment", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+async def send_attachment(
+    student_id: str,
+    file: UploadFile = File(...),
+    caption: str = Form(""),
+    current_user: dict = Depends(get_current_user),
+):
+    return await get_message_service().send_attachment(student_id, file, caption, current_user)
+
+
+@router.delete("/{student_id}")
+async def delete_thread(student_id: str, current_user: dict = Depends(get_current_user)):
+    await get_message_service().delete_thread(student_id, current_user)
+    return {"message": "ok"}

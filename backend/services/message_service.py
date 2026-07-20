@@ -2,12 +2,13 @@ import asyncio
 import logging
 from datetime import datetime
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 
 from config.settings import settings
 from models.message import MessageCreate, MessageInDB
 from repositories.message_repository import MessageRepository
 from repositories.user_repository import UserRepository
+from services.chat_attachment_service import ChatAttachmentService
 from services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class MessageService:
         self.message_repo = MessageRepository()
         self.user_repo = UserRepository()
         self.email_service = EmailService()
+        self.attachment_service = ChatAttachmentService()
 
     async def _authorize(self, current_user: dict, student_id: str) -> None:
         """Dueño del hilo (ve/escribe siempre el suyo), profesor solo el de sus alumnos
@@ -160,7 +162,17 @@ class MessageService:
 
     async def send_message(self, student_id: str, data: MessageCreate, current_user: dict) -> dict:
         await self._authorize(current_user, student_id)
-        message = MessageInDB(student_id=student_id, sender_id=current_user["id"], text=data.text)
+        return await self._create_and_notify(student_id, current_user, text=data.text)
+
+    async def send_attachment(self, student_id: str, file: UploadFile, caption: str, current_user: dict) -> dict:
+        await self._authorize(current_user, student_id)
+        attachment = await self.attachment_service.upload(file)
+        return await self._create_and_notify(student_id, current_user, text=(caption or "").strip(), attachment=attachment)
+
+    async def _create_and_notify(self, student_id: str, current_user: dict, *, text: str = "", attachment: dict = None) -> dict:
+        message = MessageInDB(
+            student_id=student_id, sender_id=current_user["id"], text=text, **(attachment or {}),
+        )
         created = await self.message_repo.create(message)
 
         # Aviso por email agrupado (ver DIGEST_WINDOW_SECONDS) solo cuando escribe staff a un
@@ -171,6 +183,13 @@ class MessageService:
             self._schedule_digest_email(student_id, created.created_at)
 
         return created.model_dump()
+
+    async def delete_thread(self, student_id: str, current_user: dict) -> None:
+        """Borra el hilo entero -- mismo criterio de autorización que leerlo/escribirlo (ver
+        _authorize): quien puede acceder a la conversación puede borrarla, no hay un permiso
+        distinto para eso. Irreversible: no hay papelera."""
+        await self._authorize(current_user, student_id)
+        await self.message_repo.delete_thread(student_id)
 
     def _schedule_digest_email(self, thread_owner_id: str, window_start: datetime) -> None:
         """Si ya hay un aviso agrupado en marcha para este hilo, no se lanza otro -- el que ya
@@ -209,7 +228,7 @@ class MessageService:
             message_payload = [
                 {
                     "sender_name": (users_by_id.get(m["sender_id"]) or {}).get("display_name") or "tu profesor",
-                    "text": m["text"],
+                    "text": m["text"] or (f"📎 {m['attachment_name']}" if m.get("attachment_path") else ""),
                 }
                 for m in new_messages
             ]
