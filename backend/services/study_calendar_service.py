@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import date, timedelta
 from itertools import cycle
 from typing import List, Optional
@@ -12,21 +13,29 @@ from repositories.study_calendar_repository import StudyCalendarRepository
 from repositories.practical_set_repository import PracticalSetRepository
 from repositories.progress_repository import ProgressRepository
 from repositories.theme_repository import ThemeRepository
-from services.analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
 
 DAYS_AHEAD = 14
 BLOCK_MINUTES = 45
-MAX_CANDIDATES_PER_THEME = 2
-MAX_REPEATS_PER_CANDIDATE = 3
+
+# Los temas generales están divididos en dos bloques oficiales del temario (13 + el resto) --
+# misma frontera que usa la progresión de contenido nuevo (ver _build_new_queue). El número de
+# temas específicos/generales en sí NUNCA se hardcodea: se lee de la colección `themes`.
+GENERAL_BLOCK_1_SIZE = 13
+
+# Mismo criterio que el frontend para distinguir Cuadernillos de Supuestos sueltos dentro de
+# `practical_sets` (ver frontend/src/utils/contentAccessUnits.js) -- no hay un campo `category`
+# separado en el modelo, la convención vive en el título.
+CUADERNILLO_PREFIX = "Cuadernillo"
+SUPUESTO_RE = re.compile(r"^Supuesto\s+(\d+)", re.IGNORECASE)
 
 
 class StudyCalendarService:
     def __init__(self):
         self.repo = StudyCalendarRepository()
         self.practical_set_repo = PracticalSetRepository()
-        self.analytics_service = AnalyticsService()
+        self.theme_repo = ThemeRepository()
 
     async def get_preferences(self, user_id: str) -> dict:
         prefs = await self.repo.get_preferences(user_id)
@@ -164,48 +173,108 @@ class StudyCalendarService:
         return {"theme_id": (ps["theme_ids"][0] if ps["theme_ids"] else None), "title": ps["title"]}
 
     async def _build_new_queue(self, user_id: str, exclude_keys: set) -> List[dict]:
-        """Contenido nuevo o con accuracy baja, repitiendo los temas más débiles para que
-        aparezcan más veces al hacer round-robin sobre los días disponibles."""
+        """Progresión fija de contenido nuevo (a diferencia del repaso SM-2, que sí prioriza por
+        fallos reales): primero una lectura comprensiva de 1 tema/día (todos los específicos +
+        el primer bloque de 13 generales, una sola vez en la vida del alumno), y luego un ciclo
+        que se repite para siempre: específicos (cuadernillo+supuesto) -> generales bloque 1
+        (test de Teoría+supuesto) -> 2ª vuelta de específicos -> resto de generales -> se repite
+        desde el principio del ciclo (nunca se repite la lectura). El propio itertools.cycle()
+        de regenerate_calendar se encarga de repetir el ciclo indefinidamente con la misma lista;
+        por eso aquí no hay que filtrar el ciclo por "ya practicado alguna vez", solo la lectura."""
+        specific_themes = await self.theme_repo.get_all(part="SPECIFIC")
+        general_themes = await self.theme_repo.get_all(part="GENERAL")
+        general_block_1 = general_themes[:GENERAL_BLOCK_1_SIZE]
+        general_rest = general_themes[GENERAL_BLOCK_1_SIZE:]
+
+        cuadernillo_by_theme, supuestos_pool = await self._load_practical_set_pools()
+        done_reading_theme_ids = await self.repo.get_completed_reading_theme_ids(user_id)
+
         queue: List[dict] = []
-        used_ps_ids: set = set()
+        suelto_idx = 0
 
-        try:
-            study_plan = await self.analytics_service.generate_study_plan(user_id, threshold=70.0, max_themes=10)
-            weak_items = study_plan.weak_themes
-        except Exception as e:
-            logger.error(f"No se pudo calcular el plan de estudio para {user_id}: {e}")
-            weak_items = []
+        def next_suelto() -> Optional[dict]:
+            nonlocal suelto_idx
+            for _ in range(len(supuestos_pool)):
+                ps = supuestos_pool[suelto_idx % len(supuestos_pool)]
+                suelto_idx += 1
+                if ps["id"] not in exclude_keys:
+                    return ps
+            return None
 
-        for item in weak_items:
-            practical_sets = await self.practical_set_repo.get_by_theme(item.theme_id)
-            practical_sets = practical_sets[:MAX_CANDIDATES_PER_THEME]
-            repeats = min(MAX_REPEATS_PER_CANDIDATE, max(1, item.recommended_practice_count // 5))
-            for ps in practical_sets:
-                used_ps_ids.add(ps["id"])
-                if ps["id"] in exclude_keys:
-                    continue
-                for _ in range(repeats):
+        for theme in specific_themes + general_block_1:
+            if theme["id"] in done_reading_theme_ids:
+                continue
+            queue.append({
+                "content_unit_key": None,
+                "theme_id": theme["id"],
+                "title": f"Lectura comprensiva — {theme['name']}",
+                "priority_reason": "Primera pasada de lectura antes de empezar a practicar",
+                "kind": "reading",
+            })
+
+        def add_specific_round(themes: List[dict]) -> None:
+            for theme in themes:
+                cuad = cuadernillo_by_theme.get(theme["id"])
+                if cuad and cuad["id"] not in exclude_keys:
                     queue.append({
-                        "content_unit_key": ps["id"],
-                        "theme_id": item.theme_id,
-                        "title": ps["title"],
-                        "priority_reason": f"Tema con más fallos ({round(item.accuracy_rate)}% de acierto)",
+                        "content_unit_key": cuad["id"],
+                        "theme_id": theme["id"],
+                        "title": cuad["title"],
+                        "priority_reason": "Progresión del temario específico",
+                        "kind": "new",
+                    })
+                suelto = next_suelto()
+                if suelto:
+                    queue.append({
+                        "content_unit_key": suelto["id"],
+                        "theme_id": None,
+                        "title": suelto["title"],
+                        "priority_reason": "Progresión del temario específico",
                         "kind": "new",
                     })
 
-        # Alumno nuevo sin fallos todavía, o pocos temas débiles: completar con cobertura general
-        # para que el calendario nunca quede vacío.
-        if len(queue) < DAYS_AHEAD:
-            all_sets = await self.practical_set_repo.get_all(skip=0, limit=200)
-            for ps in all_sets:
-                if ps["id"] in used_ps_ids or ps["id"] in exclude_keys:
-                    continue
-                queue.append({
-                    "content_unit_key": ps["id"],
-                    "theme_id": (ps["theme_ids"][0] if ps["theme_ids"] else None),
-                    "title": ps["title"],
-                    "priority_reason": "Repaso general",
-                    "kind": "new",
-                })
+        def add_general_round(themes: List[dict]) -> None:
+            for theme in themes:
+                key = f"ttgen:{theme['id']}"
+                if key not in exclude_keys:
+                    queue.append({
+                        "content_unit_key": key,
+                        "theme_id": theme["id"],
+                        "title": f"Test de Teoría — {theme['name']}",
+                        "priority_reason": "Progresión del temario general",
+                        "kind": "new",
+                    })
+                suelto = next_suelto()
+                if suelto:
+                    queue.append({
+                        "content_unit_key": suelto["id"],
+                        "theme_id": None,
+                        "title": suelto["title"],
+                        "priority_reason": "Progresión del temario general",
+                        "kind": "new",
+                    })
+
+        add_specific_round(specific_themes)
+        add_general_round(general_block_1)
+        add_specific_round(specific_themes)
+        add_general_round(general_rest)
 
         return queue
+
+    async def _load_practical_set_pools(self) -> tuple:
+        """Separa los practical_sets en cuadernillos (uno por tema específico) y supuestos
+        sueltos (sin theme_id, banco numerado), con el mismo criterio de título que usa el
+        frontend (ver frontend/src/utils/contentAccessUnits.js) -- no hay campo `category`."""
+        all_sets = await self.practical_set_repo.get_all(skip=0, limit=500)
+        cuadernillo_by_theme: dict = {}
+        supuestos_pool: List[dict] = []
+        for ps in all_sets:
+            if ps["title"].startswith(CUADERNILLO_PREFIX):
+                if ps["theme_ids"]:
+                    cuadernillo_by_theme.setdefault(ps["theme_ids"][0], ps)
+            else:
+                match = SUPUESTO_RE.match(ps["title"])
+                if match:
+                    supuestos_pool.append((int(match.group(1)), ps))
+        supuestos_pool.sort(key=lambda pair: pair[0])
+        return cuadernillo_by_theme, [ps for _, ps in supuestos_pool]

@@ -36,7 +36,7 @@ class StudyCalendarEntryInDB(BaseModel):
     title: str
     allocated_minutes: int
     priority_reason: str
-    kind: str = "new"  # "review" (repaso espaciado ya vencido) | "new" (contenido nuevo o débil)
+    kind: str = "new"  # "review" (repaso espaciado ya vencido) | "new" (progresión) | "reading" (lectura comprensiva inicial)
     status: str = "pending"  # pending | done
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

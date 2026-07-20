@@ -45,3 +45,13 @@ class StudyCalendarRepository:
         await self.entries_collection.update_one(
             {"id": entry_id, "user_id": user_id}, {"$set": {"status": status}}
         )
+
+    async def get_completed_reading_theme_ids(self, user_id: str) -> set:
+        """Temas cuya 'lectura comprensiva' (kind='reading') ya se marcó como hecha alguna vez
+        -- entradas 'done' nunca se borran (ver replace_future_pending_entries), así que esto
+        sirve de estado persistente para no repetir la lectura inicial en regeneraciones futuras."""
+        docs = await self.entries_collection.find(
+            {"user_id": user_id, "kind": "reading", "status": "done"},
+            {"_id": 0, "theme_id": 1},
+        ).to_list(length=None)
+        return {d["theme_id"] for d in docs if d.get("theme_id")}

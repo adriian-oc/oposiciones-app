@@ -89,7 +89,12 @@ const StudyCalendar = () => {
     if (!entry.content_unit_key) return;
     setStartingId(entry.id);
     try {
-      const attempt = await examService.startPractice(entry.content_unit_key);
+      // content_unit_key es o bien el id de un practical_set, o '<area_id>:<theme_id>' para un
+      // Test de Teoría (ver backend/services/study_calendar_service.py::_resolve_content_unit)
+      // -- cada formato arranca la práctica por un endpoint distinto, mismo criterio que Cuadernos.js.
+      const attempt = entry.content_unit_key.includes(':')
+        ? await examService.startTheoryPractice(...entry.content_unit_key.split(':'))
+        : await examService.startPractice(entry.content_unit_key);
       navigate(`/exams/take/${attempt.id}`);
     } catch (error) {
       alert('Error al iniciar la práctica: ' + (error.response?.data?.detail || error.message));
@@ -196,10 +201,14 @@ const StudyCalendar = () => {
                           <div className={`text-sm font-medium truncate flex items-center gap-1.5 ${entry.status === 'done' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                             <span
                               className={`text-[10px] px-1.5 py-0.5 rounded-full font-normal no-underline flex-shrink-0 ${
-                                entry.kind === 'review' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                                entry.kind === 'review'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : entry.kind === 'reading'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              {entry.kind === 'review' ? '🔁 Repaso' : '🆕 Nuevo'}
+                              {entry.kind === 'review' ? '🔁 Repaso' : entry.kind === 'reading' ? '📖 Lectura' : '🆕 Nuevo'}
                             </span>
                             <span className="truncate">{entry.title}</span>
                           </div>
