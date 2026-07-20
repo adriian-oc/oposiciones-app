@@ -13,6 +13,23 @@ import { accessRequestService } from '../services/accessRequestService';
 import documentService from '../services/documentService';
 import { openGmailCompose } from '../utils/gmailCompose';
 
+// Mismas categorías que backend/api/admin.py::EVENT_LABELS -- colorea por gravedad, no por tipo
+// exacto (varios eventos de Brevo comparten intención: rebotes/spam/bloqueo son todos "fue mal").
+const EMAIL_EVENT_BADGE = {
+  delivered: 'bg-green-100 text-green-700',
+  opened: 'bg-green-100 text-green-700',
+  clicks: 'bg-blue-100 text-blue-700',
+  sent: 'bg-gray-100 text-gray-600',
+  deferred: 'bg-amber-100 text-amber-800',
+  blocked: 'bg-red-100 text-red-700',
+  hardBounces: 'bg-red-100 text-red-700',
+  softBounces: 'bg-amber-100 text-amber-800',
+  spam: 'bg-red-100 text-red-700',
+  invalid: 'bg-red-100 text-red-700',
+  error: 'bg-red-100 text-red-700',
+  unsubscribed: 'bg-gray-100 text-gray-600',
+};
+
 const Admin = () => {
   const navigate = useNavigate();
   // null = panel de tarjetas; si no, la sección abierta: 'upload', 'questions', 'roster', 'requests', 'failures', 'documents'
@@ -42,6 +59,11 @@ const Admin = () => {
   // Documentos PDF de profesor pendientes de aprobación (ronda 5)
   const [pendingDocs, setPendingDocs] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
+
+  // Actividad de email (Brevo), solo lectura -- se carga al abrir la tarjeta, no al entrar al panel.
+  const [emailActivity, setEmailActivity] = useState([]);
+  const [emailActivityLoading, setEmailActivityLoading] = useState(false);
+  const [emailActivityError, setEmailActivityError] = useState('');
 
   const loadRoster = useCallback(async () => {
     setRosterLoading(true);
@@ -84,6 +106,19 @@ const Admin = () => {
       loadRoster();
     }
   }, [activeTab, loadRoster]);
+
+  useEffect(() => {
+    if (activeTab !== 'email-activity') return;
+    setEmailActivityLoading(true);
+    setEmailActivityError('');
+    adminService.getEmailActivity()
+      .then(setEmailActivity)
+      .catch((error) => {
+        console.error('Error loading email activity:', error);
+        setEmailActivityError(error.response?.data?.detail || 'No se pudo cargar la actividad de email');
+      })
+      .finally(() => setEmailActivityLoading(false));
+  }, [activeTab]);
 
   // Solicitudes y documentos pendientes se cargan siempre al entrar al panel (no solo al abrir su
   // tarjeta) para poder mostrar el aviso de pendientes en la propia tarjeta antes de pinchar.
@@ -254,6 +289,13 @@ const Admin = () => {
                 description: 'Documentos de profesores pendientes de aprobar',
                 badge: pendingDocs.length,
                 testId: 'card-documents',
+              },
+              {
+                key: 'email-activity',
+                icon: '📧',
+                label: 'Actividad de Email',
+                description: 'Envíos recientes: entregados, abiertos, rebotados...',
+                testId: 'card-email-activity',
               },
             ].map((section) => (
               <button
@@ -527,6 +569,50 @@ const Admin = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'email-activity' && (
+          <div className="bg-white rounded-lg shadow p-6" data-testid="email-activity-section">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Actividad de Email (Brevo)</h2>
+            {emailActivityLoading ? (
+              <p className="text-center text-gray-500">Cargando...</p>
+            ) : emailActivityError ? (
+              <p className="text-sm text-red-600">{emailActivityError}</p>
+            ) : emailActivity.length === 0 ? (
+              <p className="text-sm text-gray-500">Todavía no hay actividad registrada.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Asunto</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Remitente</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Destinatario</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {emailActivity.map((ev, i) => (
+                      <tr key={i}>
+                        <td className="px-4 py-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${EMAIL_EVENT_BADGE[ev.event] || 'bg-gray-100 text-gray-600'}`}>
+                            {ev.event_label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-600 whitespace-nowrap">
+                          {ev.date ? new Date(ev.date).toLocaleString('es-ES') : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{ev.subject || '—'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{ev.from || '—'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-600">{ev.to || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

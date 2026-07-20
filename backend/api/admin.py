@@ -1,10 +1,32 @@
-from fastapi import APIRouter, Depends, UploadFile, File, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from typing import List
+
+import requests
 
 from models.user import UserCreate, UserResponse, UserUpdate
 from services.admin_service import AdminService
 from services.avatar_service import AvatarService
+from services.email_service import EmailService
 from middleware.auth import require_role
+
+logger = logging.getLogger(__name__)
+
+EVENT_LABELS = {
+    "sent": "Enviado",
+    "delivered": "Entregado",
+    "opened": "Abierto",
+    "clicks": "Clicado",
+    "blocked": "Bloqueado",
+    "hardBounces": "Rebote duro",
+    "softBounces": "Rebote suave",
+    "spam": "Spam",
+    "invalid": "Inválido",
+    "deferred": "Diferido",
+    "unsubscribed": "Baja",
+    "error": "Error",
+}
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -85,6 +107,29 @@ async def upload_student_avatar(
     """Admin cambia la foto de perfil de cualquier usuario del roster."""
     updated = await AvatarService().upload(user_id, file)
     return UserResponse(**updated)
+
+
+@router.get("/email-activity")
+async def get_email_activity(current_user: dict = Depends(require_role(["admin"]))):
+    """Actividad reciente de envíos de Brevo (misma vista que Transaccional > Tiempo real en el
+    panel de Brevo), traída al propio Admin -- ver EmailService.get_recent_activity."""
+    try:
+        events = EmailService().get_recent_activity()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Fallo al consultar actividad de email en Brevo: {e}")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo consultar la actividad de email")
+
+    return [
+        {
+            "event": e.get("event"),
+            "event_label": EVENT_LABELS.get(e.get("event"), e.get("event")),
+            "date": e.get("date"),
+            "subject": e.get("subject"),
+            "from": e.get("from"),
+            "to": e.get("email"),
+        }
+        for e in events
+    ]
 
 
 @router.post("/students/migration-announcement")

@@ -9,6 +9,7 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
+BREVO_EVENTS_ENDPOINT = "https://api.brevo.com/v3/smtp/statistics/events"
 
 
 class EmailService:
@@ -40,6 +41,22 @@ class EmailService:
                 logger.error(f"Brevo devolvió {response.status_code} al enviar a {to_email}: {response.text}")
         except Exception as e:
             logger.error(f"Fallo al enviar email a {to_email}: {e}")
+
+    def get_recent_activity(self, limit: int = 100) -> List[dict]:
+        """Actividad reciente de envíos (enviado/entregado/abierto/clicado/bloqueado/...) vía la
+        API de eventos transaccionales de Brevo -- la misma vista que Transaccional > Tiempo real
+        del panel de Brevo, traída al propio Admin (ver GET /api/admin/email-activity). Nunca se
+        expone BREVO_API_KEY al frontend: esta llamada vive siempre en el backend."""
+        if not settings.brevo_api_key:
+            return []
+        response = requests.get(
+            BREVO_EVENTS_ENDPOINT,
+            headers={"api-key": settings.brevo_api_key, "Accept": "application/json"},
+            params={"limit": limit, "sort": "desc"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json().get("events", [])
 
     def _layout(self, body_html: str) -> str:
         """Envoltorio visual común (logo + tarjeta + pie) para todos los correos -- la URL del

@@ -36,6 +36,11 @@ export const adminService = {
     return response.data;
   },
 
+  async getEmailActivity() {
+    const response = await api.get('/api/admin/email-activity');
+    return response.data;
+  },
+
   async uploadAvatar(userId, file) {
     const formData = new FormData();
     formData.append('file', file);
