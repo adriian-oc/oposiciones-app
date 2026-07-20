@@ -33,9 +33,10 @@ sesiones recientes: permisos de perfil por rol, calendario de estudio editable p
 admin/profesor, sistema de notificaciones con campanita, Modo Foco/Pomodoro, cambio rápido de
 cuenta admin↔profesor sin re-login, chat admin↔profesor además de admin/profesor↔alumno, cambio
 de remitente de email, cada correo automático registrado también como mensaje dentro de la app,
-progresión fija del calendario por temario (ronda 2026-07-20), rediseño de Chat con barra de
-contactos, foto de perfil, correos con plantilla visual común, y actividad de email de Brevo en
-Admin — ver detalle de esta última ronda más abajo).
+progresión fija del calendario por temario, rediseño de Chat con barra de contactos, foto de
+perfil, correos con plantilla visual común, actividad de email de Brevo en Admin, cambio de rol
+de usuarios existentes, y alumnos "propios" de un profesor con su propia pestaña de
+administración (ambas rondas del 2026-07-20) — ver detalle de la última ronda más abajo).
 
 ## Cerrado — importar progreso de alumnos de "la página antigua"
 
@@ -118,6 +119,45 @@ vive siempre en el backend). Nueva tarjeta "Actividad de Email" en `Admin.js` co
 Estado/Fecha/Asunto/Remitente/Destinatario. Sin `BREVO_API_KEY` en local (como el resto de
 envío) devuelve `[]` y la tarjeta muestra "Todavía no hay actividad registrada" — no se ha podido
 verificar con datos reales de Brevo en esta ronda, solo el estado vacío.
+
+## Hecho en la ronda del 2026-07-20 (parte 2) — roles y alumnos propios de profesor
+
+Pedido del usuario: (1) el admin tiene que poder cambiar el rol de un usuario YA creado, no solo
+al darlo de alta; (2) los profesores tienen que poder tener "alumnos propios" (clientela privada,
+con poder de gestión real) además de "alumnos del centro" (los de siempre, solo seguimiento), y
+el admin tiene que ver por profesor cuántos alumnos tiene en total/propios/del centro. Aclarado
+con el usuario antes de implementar (respuestas elegidas, todas la opción recomendada):
+- Un alumno propio le da al profesor **todo salvo cuenta/rol**: acceso a contenido, pagos,
+  fecha de expiración, restablecer contraseña, revocar/reactivar — igual que el admin, pero sin
+  poder crear la cuenta ni cambiar el rol de nadie.
+- Solo el admin marca a un alumno como propio/centro (el profesor nunca crea ni reasigna).
+- Un admin no puede cambiar su propio rol desde el control (sí el de cualquier otro usuario).
+
+Implementado y verificado (pytest + eslint + build + navegador con los tres roles):
+- `backend/models/user.py`: nuevo `student_type` ("propio" | "centro" | None) en `UserInDB`/
+  `UserResponse`/`UserUpdate`, solo tiene sentido si hay `assigned_profesor_id`.
+- `backend/services/admin_service.py`: `_authorize_own_student` (admin sin restricción; profesor
+  solo sobre alumnos con `assigned_profesor_id == su_id` y `student_type == "propio"`) usado en
+  `update_student`/`set_revoked`/`send_password_reset`. `PROFESOR_EDITABLE_FIELDS` es una
+  allowlist (`allowed_content`, `payment_type`, `payments_received`, `expires_at`) — cualquier
+  otro campo en el PATCH de un profesor es 403, incluido sobre sus propios alumnos propios.
+  `update_student` también bloquea que un admin cambie su propio `role` (400).
+- `backend/api/admin.py`: `PATCH /students/{id}`, `.../send-password-reset`, `.../revoke`,
+  `.../reactivate` ahora aceptan `require_role(["admin","profesor"])` (antes solo admin).
+- `frontend/src/pages/Admin.js`: selector de Rol en el editor de perfil (deshabilitado si es tu
+  propia cuenta), botón "👤 Perfil" ahora visible también en filas de admin, selector "Tipo de
+  alumno" en "✏️ Acceso" (solo si hay profesor asignado), y nueva tarjeta "Profesores" con la
+  tabla alumnos totales/propios/centro (calculada del roster ya cargado, sin endpoint nuevo).
+- `EditUserModal` y `ExpiryEditorModal` se sacaron de dentro de `Admin.js` a componentes propios
+  (`frontend/src/components/EditUserModal.js` y `ExpiryEditorModal.js`) para poder reusarlos tal
+  cual desde `ProfesorDashboard.js`; `EditUserModal` acepta `adminOnly` (`false` oculta reasignar
+  profesor y el tipo propio/centro). `RosterTable.js` gatea cada botón/columna por si le pasan el
+  handler correspondiente (antes los pintaba todos siempre), para poder reusarlo con un
+  subconjunto de acciones sin tocarlo cada vez que cambian los permisos de quien lo usa.
+- `frontend/src/pages/ProfesorDashboard.js`: nueva pestaña "🏠 Administrar Propios (N)" que reusa
+  `RosterTable` + `EditUserModal`(`adminOnly={false}`) + `ExpiryEditorModal`, filtrada a
+  `student_type === 'propio'`, con los mismos endpoints de `adminService` (ya abiertos a profesor
+  en el backend).
 
 ## Ya aclarado con el usuario (no repetir la explicación)
 
