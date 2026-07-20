@@ -1,5 +1,6 @@
 from repositories.document_submission_repository import DocumentSubmissionRepository
 from repositories.user_repository import UserRepository
+from services.notification_service import NotificationService
 from models.document_submission import DocumentSubmissionInDB
 from fastapi import HTTPException, status, UploadFile
 from pathlib import Path
@@ -20,6 +21,7 @@ class DocumentSubmissionService:
     def __init__(self):
         self.repo = DocumentSubmissionRepository()
         self.user_repo = UserRepository()
+        self.notification_service = NotificationService()
 
     async def submit(self, area_id: str, theme_id: str, file: UploadFile, uploaded_by: str) -> dict:
         if file.content_type != "application/pdf":
@@ -38,6 +40,16 @@ class DocumentSubmissionService:
             original_filename=file.filename or stored_name,
         )
         created = await self.repo.create(doc)
+
+        uploader = await self.user_repo.get_by_id(uploaded_by)
+        uploader_name = (uploader or {}).get("display_name") or "Un profesor"
+        await self.notification_service.notify_admins(
+            "document_pending",
+            "Documento pendiente de aprobación",
+            f"{uploader_name} ha subido \"{created.original_filename}\" para revisar.",
+            "/admin",
+        )
+
         return created.model_dump()
 
     async def list_pending(self) -> List[dict]:

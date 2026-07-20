@@ -5,6 +5,7 @@ from models.user import UserCreate, Profile
 from repositories.access_request_repository import AccessRequestRepository
 from repositories.user_repository import UserRepository
 from services.admin_service import AdminService
+from services.notification_service import NotificationService
 
 
 class AccessRequestService:
@@ -12,10 +13,18 @@ class AccessRequestService:
         self.repo = AccessRequestRepository()
         self.user_repo = UserRepository()
         self.admin_service = AdminService()
+        self.notification_service = NotificationService()
 
     async def create_request(self, data: AccessRequestCreate) -> dict:
         request = AccessRequestInDB(**data.model_dump())
         created = await self.repo.create(request)
+        tipo_label = "profesor" if created.tipo == "profesor" else "alumno"
+        await self.notification_service.notify_admins(
+            "access_request_pending",
+            "Nueva solicitud de acceso",
+            f"{created.nombre} ha solicitado acceso como {tipo_label}.",
+            "/admin",
+        )
         return created.model_dump()
 
     async def list_requests(self) -> list:

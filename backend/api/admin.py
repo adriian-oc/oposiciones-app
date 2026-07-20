@@ -73,3 +73,11 @@ async def mark_reviewed(
     sin afectar al badge de otros profesores/admins que también vean al mismo alumno."""
     await get_admin_service().mark_reviewed(user_id, current_user["id"], is_admin=current_user["role"] == "admin")
     return {"message": "ok"}
+
+
+@router.post("/students/migration-announcement")
+async def send_migration_announcement(current_user: dict = Depends(require_role(["admin"]))):
+    """Aviso puntual de migración: da 3 días de acceso completo temporal a todos los alumnos
+    activos y les manda el correo con ese aviso + su enlace para fijar contraseña."""
+    sent = await get_admin_service().send_migration_announcement()
+    return {"sent": sent}

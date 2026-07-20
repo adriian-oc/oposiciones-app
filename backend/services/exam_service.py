@@ -34,10 +34,20 @@ class ExamService:
     async def _check_access_key(self, access_key: str, user_id: str) -> None:
         """Aplica user.allowed_content (None = acceso completo) contra una clave de acceso
         (gen:<id> / cuad:<theme_id> / <area_id>:<theme_id>) -- comprobación server-side, no
-        basta con ocultar la opción en el cliente."""
+        basta con ocultar la opción en el cliente. temp_full_access_until, si no ha caducado
+        todavía, da acceso completo sin tocar el allowed_content guardado (para campañas
+        temporales tipo "prueba todo el material 3 días" que luego vuelven solas al plan real)."""
         user = await self.user_repo.get_by_id(user_id)
         if not user or user.get("role") in ("admin", "profesor"):
             return
+        temp_until = user.get("temp_full_access_until")
+        if temp_until:
+            if isinstance(temp_until, str):
+                temp_until = datetime.fromisoformat(temp_until)
+            if temp_until.tzinfo is None:
+                temp_until = temp_until.replace(tzinfo=timezone.utc)
+            if temp_until > datetime.now(timezone.utc):
+                return
         allowed = user.get("allowed_content")
         if allowed is None:
             return

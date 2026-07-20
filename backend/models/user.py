@@ -53,6 +53,9 @@ class UserInDB(UserBase):
     # POST /api/auth/switch. Lo fija un admin y AdminService.update_student lo hace recíproco
     # automáticamente en ambas cuentas.
     linked_user_id: Optional[str] = None
+    # Acceso completo temporal (p.ej. campaña "prueba todo el material 3 días") que no toca
+    # allowed_content -- caduca solo, ver ExamService._check_access_key.
+    temp_full_access_until: Optional[datetime] = None
 
 class UserResponse(UserBase):
     id: str
@@ -67,6 +70,7 @@ class UserResponse(UserBase):
     payments_received: List[PaymentRecord] = Field(default_factory=list)
     profile: Optional[Profile] = None
     linked_user_id: Optional[str] = None
+    temp_full_access_until: Optional[datetime] = None
     has_novedades: Optional[bool] = None  # solo se rellena al listar para un admin/profesor concreto
     progress_summary: Optional[dict] = None  # solo se rellena al listar (AdminService.list_students)
 
@@ -82,6 +86,7 @@ class UserUpdate(BaseModel):
     profile: Optional[Profile] = None
     role: Optional[str] = None
     linked_user_id: Optional[str] = None
+    temp_full_access_until: Optional[datetime] = None
 
 class SelfProfileUpdate(BaseModel):
     """Autoservicio: lo que un usuario puede cambiar de sí mismo (nunca role/revoked/

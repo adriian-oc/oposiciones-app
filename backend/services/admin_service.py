@@ -1,6 +1,6 @@
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 
@@ -10,6 +10,7 @@ from repositories.user_repository import UserRepository
 from repositories.progress_repository import ProgressRepository
 from services.auth_service import hash_password, generate_reset_token, reset_token_expiry
 from services.email_service import EmailService
+from services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,25 @@ def _has_novedades(user: dict, progress: dict, staff_id: str) -> bool:
     return updated_at > last_reviewed
 
 
+def _describe_new_access(old_allowed, new_allowed) -> str | None:
+    """Compara el allowed_content anterior contra el nuevo y describe qué se AÑADIÓ -- None si
+    no hay nada nuevo (una restricción de acceso no genera aviso, solo una concesión)."""
+    if old_allowed is None:
+        return None  # ya tenía acceso completo, no se le puede dar más
+    if new_allowed is None:
+        return "Ahora tienes acceso a todo el contenido."
+    new_items = [k for k in new_allowed if k not in old_allowed]
+    if not new_items:
+        return None
+    return f"Ahora tienes acceso a {len(new_items)} contenido(s) nuevo(s)."
+
+
 class AdminService:
     def __init__(self):
         self.user_repo = UserRepository()
         self.progress_repo = ProgressRepository()
         self.email_service = EmailService()
+        self.notification_service = NotificationService()
 
     async def list_students(self, viewer_staff_id: str = None):
         from services.progress_service import ProgressService
@@ -110,6 +125,13 @@ class AdminService:
             if new_linked_id:
                 await self.user_repo.update_fields(new_linked_id, UserUpdate(linked_user_id=user_id))
 
+        if "allowed_content" in update.model_fields_set:
+            new_access_msg = _describe_new_access(user.get("allowed_content"), update.allowed_content)
+            if new_access_msg:
+                await self.notification_service.notify(
+                    user_id, "content_access", "Nuevo contenido disponible", new_access_msg, "/cuadernos",
+                )
+
         return updated
 
     async def set_revoked(self, user_id: str, revoked: bool) -> dict:
@@ -119,3 +141,30 @@ class AdminService:
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
         return await self.user_repo.set_revoked(user_id, revoked)
+
+    async def send_migration_announcement(self, trial_days: int = 3) -> int:
+        """Avisa a todos los alumnos activos de la migración: da acceso completo temporal
+        (temp_full_access_until, no toca allowed_content) durante trial_days y manda un correo
+        con ese aviso más su enlace de un solo uso para fijar/confirmar contraseña. Devuelve
+        cuántos alumnos recibieron el correo."""
+        students = [
+            u for u in await self.user_repo.list_all()
+            if u.get("role") == "student" and not u.get("revoked")
+        ]
+        until = datetime.now(timezone.utc) + timedelta(days=trial_days)
+        sent = 0
+        for student in students:
+            if not student.get("email"):
+                continue
+            await self.user_repo.update_fields(student["id"], UserUpdate(temp_full_access_until=until))
+            token, token_hash = generate_reset_token()
+            await self.user_repo.set_reset_token(student["id"], token_hash, reset_token_expiry())
+            link = f"{settings.frontend_base_url}/reset-password?token={token}"
+            self.email_service.send_migration_announcement(
+                to_email=student["email"],
+                to_name=student.get("display_name") or student["email"],
+                reset_link=link,
+                trial_days=trial_days,
+            )
+            sent += 1
+        return sent

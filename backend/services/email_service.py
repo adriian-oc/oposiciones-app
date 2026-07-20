@@ -72,3 +72,19 @@ class EmailService:
         <p>Este enlace caduca en 24 horas. Si no lo has pedido tú, ignora este correo.</p>
         """
         self.send(to_email, to_name, subject, html)
+
+    def send_migration_announcement(self, to_email: str, to_name: str, reset_link: str, trial_days: int = 3) -> None:
+        subject = "ADOC tiene web nueva — acceso completo gratis unos días"
+        html = f"""
+        <p>Hola {to_name},</p>
+        <p>Hemos migrado ADOC a una plataforma nueva. Para que la pruebes a fondo, tienes
+        <strong>acceso a todo el material</strong> (todos los temas, cuadernillos y supuestos)
+        durante los próximos <strong>{trial_days} días</strong>, aunque tu plan normal no lo
+        incluya todo.</p>
+        <p>Entre quienes mejor puntuación saquen en este periodo, cederemos el acceso completo
+        a toda la preparación de forma definitiva.</p>
+        <p>Antes de entrar, confirma tu contraseña aquí:</p>
+        <p><a href="{reset_link}">Fijar mi contraseña</a></p>
+        <p>Este enlace caduca en 24 horas.</p>
+        """
+        self.send(to_email, to_name, subject, html)

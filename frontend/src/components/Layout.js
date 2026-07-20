@@ -4,8 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { useExamGuard } from '../context/ExamGuardContext';
 import ConfirmDialog from './ConfirmDialog';
 import { messageService } from '../services/messageService';
+import { notificationService } from '../services/notificationService';
 
 const UNREAD_POLL_MS = 30000;
+
+const NOTIF_ICONS = {
+  content_access: '📖',
+  document_pending: '📄',
+  access_request_pending: '📨',
+};
 
 const Layout = ({ children }) => {
   const { user, logout, switchAccount } = useAuth();
@@ -15,19 +22,23 @@ const Layout = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
   const [unreadThreads, setUnreadThreads] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const hasUnread = unreadThreads.length > 0;
+  const hasUnread = unreadThreads.length > 0 || notifications.length > 0;
 
-  // Sondeo simple de hilos sin leer -- se re-consulta al cambiar de página (para que se apague
-  // nada más leer el hilo, ver MessageService.get_thread que marca como leído) y cada 30s de
-  // fondo para detectar mensajes nuevos sin recargar.
+  // Sondeo simple de hilos sin leer y notificaciones (acceso nuevo, documentos/solicitudes
+  // pendientes) -- se re-consulta al cambiar de página (para que se apague nada más leer el
+  // hilo, ver MessageService.get_thread que marca como leído) y cada 30s de fondo.
   useEffect(() => {
     if (!user || !['student', 'profesor', 'admin'].includes(user.role)) return;
     let cancelled = false;
     const checkUnread = () => {
       messageService.getUnreadThreads()
         .then((data) => { if (!cancelled) setUnreadThreads(data); })
+        .catch(() => {});
+      notificationService.getUnread()
+        .then((data) => { if (!cancelled) setNotifications(data); })
         .catch(() => {});
     };
     checkUnread();
@@ -40,6 +51,34 @@ const Layout = ({ children }) => {
 
   // El alumno solo tiene un hilo (el suyo); profesor/admin tienen uno por alumno.
   const threadLink = (thread) => (user?.role === 'student' ? '/chat' : `/profesor/chat/${thread.student_id}`);
+
+  const handleNotificationClick = (notification) => {
+    notificationService.markRead(notification.id).catch(() => {});
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+  };
+
+  // Une hilos sin leer y notificaciones en una sola lista para el desplegable de la campanita,
+  // ordenada por fecha -- lo más reciente arriba, sin importar de qué tipo sea.
+  const notifItems = [
+    ...unreadThreads.map((thread) => ({
+      key: `msg-${thread.student_id}`,
+      icon: '💬',
+      label: thread.display_name,
+      sublabel: 'Mensaje nuevo',
+      link: threadLink(thread),
+      at: thread.last_message_at,
+      onSelect: () => {},
+    })),
+    ...notifications.map((n) => ({
+      key: `notif-${n.id}`,
+      icon: NOTIF_ICONS[n.type] || '🔔',
+      label: n.title,
+      sublabel: n.message,
+      link: n.link,
+      at: n.created_at,
+      onSelect: () => handleNotificationClick(n),
+    })),
+  ].sort((a, b) => new Date(b.at) - new Date(a.at));
 
   const handleLogout = async () => {
     await logout();
@@ -164,22 +203,26 @@ const Layout = ({ children }) => {
                       aria-label="Cerrar notificaciones"
                       onClick={() => setNotifOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 z-50" data-testid="notifications-dropdown">
-                      {unreadThreads.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-gray-500">No hay mensajes nuevos.</p>
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto" data-testid="notifications-dropdown">
+                      {notifItems.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
                       ) : (
-                        unreadThreads.map((thread) => (
+                        notifItems.map((item) => (
                           <Link
-                            key={thread.student_id}
-                            to={threadLink(thread)}
+                            key={item.key}
+                            to={item.link}
                             onClick={(e) => {
                               setNotifOpen(false);
-                              guardedNavigate(e, threadLink(thread));
+                              item.onSelect();
+                              guardedNavigate(e, item.link);
                             }}
-                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
                           >
-                            <div className="text-sm font-medium text-gray-900">{thread.display_name}</div>
-                            <div className="text-xs text-gray-500">Mensaje nuevo</div>
+                            <span className="flex-shrink-0">{item.icon}</span>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
+                              <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
+                            </div>
                           </Link>
                         ))
                       )}
@@ -231,23 +274,27 @@ const Layout = ({ children }) => {
                       aria-label="Cerrar notificaciones"
                       onClick={() => setNotifOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                      {unreadThreads.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-gray-500">No hay mensajes nuevos.</p>
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                      {notifItems.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
                       ) : (
-                        unreadThreads.map((thread) => (
+                        notifItems.map((item) => (
                           <Link
-                            key={thread.student_id}
-                            to={threadLink(thread)}
+                            key={item.key}
+                            to={item.link}
                             onClick={(e) => {
                               setNotifOpen(false);
                               setMobileMenuOpen(false);
-                              guardedNavigate(e, threadLink(thread));
+                              item.onSelect();
+                              guardedNavigate(e, item.link);
                             }}
-                            className="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
                           >
-                            <div className="text-sm font-medium text-gray-900">{thread.display_name}</div>
-                            <div className="text-xs text-gray-500">Mensaje nuevo</div>
+                            <span className="flex-shrink-0">{item.icon}</span>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
+                              <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
+                            </div>
                           </Link>
                         ))
                       )}
