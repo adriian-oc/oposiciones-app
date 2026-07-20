@@ -54,9 +54,10 @@ async def create_student(
 @router.post("/students/{user_id}/send-password-reset")
 async def send_password_reset(
     user_id: str,
-    current_user: dict = Depends(require_role(["admin"])),
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
 ):
-    link = await get_admin_service().send_password_reset(user_id)
+    """admin: cualquier usuario. profesor: solo sus alumnos propios (ver AdminService._authorize_own_student)."""
+    link = await get_admin_service().send_password_reset(user_id, current_user)
     return {"reset_link": link}
 
 
@@ -64,27 +65,29 @@ async def send_password_reset(
 async def update_student(
     user_id: str,
     update: UserUpdate,
-    current_user: dict = Depends(require_role(["admin"])),
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
 ):
-    """Edición de campos de roster: allowed_content, assigned_profesor_id, payment_type, profile, role..."""
-    return await get_admin_service().update_student(user_id, update)
+    """Edición de campos de roster: allowed_content, assigned_profesor_id, payment_type, profile,
+    role... admin sin restricción; profesor solo sobre sus alumnos propios y un subconjunto de
+    campos (ver AdminService.PROFESOR_EDITABLE_FIELDS)."""
+    return await get_admin_service().update_student(user_id, update, current_user)
 
 
 @router.post("/students/{user_id}/revoke", response_model=UserResponse)
 async def revoke_student(
     user_id: str,
-    current_user: dict = Depends(require_role(["admin"])),
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
 ):
-    """Nunca borra la cuenta -- ver AdminService.set_revoked."""
-    return await get_admin_service().set_revoked(user_id, True)
+    """Nunca borra la cuenta -- ver AdminService.set_revoked. admin: cualquiera; profesor: solo propios."""
+    return await get_admin_service().set_revoked(user_id, True, current_user)
 
 
 @router.post("/students/{user_id}/reactivate", response_model=UserResponse)
 async def reactivate_student(
     user_id: str,
-    current_user: dict = Depends(require_role(["admin"])),
+    current_user: dict = Depends(require_role(["admin", "profesor"])),
 ):
-    return await get_admin_service().set_revoked(user_id, False)
+    return await get_admin_service().set_revoked(user_id, False, current_user)
 
 
 @router.post("/students/{user_id}/mark-reviewed")

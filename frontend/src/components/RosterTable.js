@@ -6,6 +6,11 @@ import Avatar from './Avatar';
 // (inusable para un admin no técnico en el teléfono): dos layouts Tailwind (tabla oculta en
 // móvil / tarjetas ocultas en escritorio), aprovechando que React permite renderizado
 // condicional nativo en vez de depender de trucos CSS.
+//
+// Reutilizado también desde ProfesorDashboard (pestaña "Administración de mis alumnos propios")
+// con un subconjunto de acciones -- cada botón/columna solo se pinta si le pasan el handler
+// correspondiente, así un caller que no pasa onAssignProfesor simplemente no ve esa columna, en
+// vez de tener que pasar un array de "acciones permitidas" aparte para mantener sincronizado.
 const RosterTable = ({
   users,
   profesores,
@@ -55,6 +60,15 @@ const RosterTable = ({
       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">🎁 Gratis</span>
     );
 
+  const studentTypeBadge = (u) => {
+    if (u.role !== 'student' || !u.assigned_profesor_id) return null;
+    return u.student_type === 'propio' ? (
+      <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">🏠 Propio</span>
+    ) : (
+      <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">🏫 Centro</span>
+    );
+  };
+
   const progressCell = (u) => {
     const s = u.progress_summary;
     if (!s || s.answered === 0) return <span className="text-xs text-gray-400">Sin actividad</span>;
@@ -71,28 +85,34 @@ const RosterTable = ({
 
   const activeUsers = users.filter((u) => !isBlocked(u));
   const blockedUsers = users.filter(isBlocked);
+  const showProfesorColumn = !!onAssignProfesor;
 
-  const profesorSelect = (u) => (
-    <select
-      value={u.assigned_profesor_id || ''}
-      onChange={(e) => onAssignProfesor(u, e.target.value || null)}
-      className="text-xs border border-gray-300 rounded px-1 py-1"
-    >
-      <option value="">Sin asignar</option>
-      {profesores.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.display_name}
-        </option>
-      ))}
-    </select>
+  const profesorCell = (u) => (
+    <div className="flex flex-col gap-1">
+      <select
+        value={u.assigned_profesor_id || ''}
+        onChange={(e) => onAssignProfesor(u, e.target.value || null)}
+        className="text-xs border border-gray-300 rounded px-1 py-1"
+      >
+        <option value="">Sin asignar</option>
+        {profesores.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.display_name}
+          </option>
+        ))}
+      </select>
+      {studentTypeBadge(u)}
+    </div>
   );
 
   const actionsFor = (u, blocked) => (
     <div className="flex flex-wrap gap-2">
-      <button onClick={() => onViewProgress(u)} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
-        📊 Progreso
-      </button>
-      {(u.role === 'student' || u.role === 'profesor') && (
+      {onViewProgress && (
+        <button onClick={() => onViewProgress(u)} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+          📊 Progreso
+        </button>
+      )}
+      {onEditProfile && (
         <button onClick={() => onEditProfile(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
           👤 Perfil
         </button>
@@ -105,28 +125,32 @@ const RosterTable = ({
           💬 Chat
         </Link>
       )}
-      {u.role === 'student' && (
-        <>
-          <button onClick={() => onEditContent(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-            ✏️ Acceso
-          </button>
-          <button onClick={() => onEditExpiry(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-            📅 Expira
-          </button>
-        </>
-      )}
-      <button onClick={() => onSendReset(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-        🔑 Restablecer
-      </button>
-      {blocked ? (
-        <button onClick={() => onReactivate(u)} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">
-          Reactivar
-        </button>
-      ) : (
-        <button onClick={() => onRevoke(u)} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
-          Revocar
+      {u.role === 'student' && onEditContent && (
+        <button onClick={() => onEditContent(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+          ✏️ Acceso
         </button>
       )}
+      {u.role === 'student' && onEditExpiry && (
+        <button onClick={() => onEditExpiry(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+          📅 Expira
+        </button>
+      )}
+      {onSendReset && (
+        <button onClick={() => onSendReset(u)} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+          🔑 Restablecer
+        </button>
+      )}
+      {blocked
+        ? onReactivate && (
+            <button onClick={() => onReactivate(u)} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">
+              Reactivar
+            </button>
+          )
+        : onRevoke && (
+            <button onClick={() => onRevoke(u)} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">
+              Revocar
+            </button>
+          )}
     </div>
   );
 
@@ -141,7 +165,9 @@ const RosterTable = ({
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expira</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pago</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Progreso</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profesor asignado</th>
+            {showProfesorColumn && (
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profesor asignado</th>
+            )}
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
           </tr>
         </thead>
@@ -160,7 +186,9 @@ const RosterTable = ({
               <td className="px-4 py-3">{expiryBadge(u)}</td>
               <td className="px-4 py-3">{u.role === 'student' ? paymentBadge(u) : <span className="text-xs text-gray-400">—</span>}</td>
               <td className="px-4 py-3">{u.role === 'student' ? progressCell(u) : <span className="text-xs text-gray-400">—</span>}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{u.role === 'student' ? profesorSelect(u) : '—'}</td>
+              {showProfesorColumn && (
+                <td className="px-4 py-3 text-sm text-gray-600">{u.role === 'student' ? profesorCell(u) : '—'}</td>
+              )}
               <td className="px-4 py-3">{actionsFor(u, blocked)}</td>
             </tr>
           ))}
@@ -185,7 +213,9 @@ const RosterTable = ({
             {u.role === 'student' && paymentBadge(u)}
           </div>
           {u.role === 'student' && <div className="mt-2">{progressCell(u)}</div>}
-          {u.role === 'student' && <div className="text-sm text-gray-600 mt-2">Profesor: {profesorSelect(u)}</div>}
+          {showProfesorColumn && u.role === 'student' && (
+            <div className="text-sm text-gray-600 mt-2">Profesor: {profesorCell(u)}</div>
+          )}
           <div className="mt-3">{actionsFor(u, blocked)}</div>
         </div>
       ))}

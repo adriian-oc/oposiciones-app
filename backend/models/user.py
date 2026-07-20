@@ -44,6 +44,12 @@ class UserInDB(UserBase):
     revoked: bool = False  # se comprueba ANTES de expires_at; bloquea cualquier rol, incluido staff
     allowed_content: Optional[List[str]] = None  # None = acceso completo
     assigned_profesor_id: Optional[str] = None
+    # Solo tiene sentido si hay assigned_profesor_id: "propio" (clientela privada de ESE
+    # profesor, que además de ver progreso puede gestionarlo -- acceso, pagos, expiración,
+    # restablecer contraseña, revocar/reactivar, ver AdminService._authorize_own_student) o
+    # "centro" (alumno general de la academia, asignado solo para seguimiento). Lo fija
+    # siempre un admin, nunca el propio profesor.
+    student_type: Optional[str] = None  # "propio" | "centro"
     last_reviewed_by: Dict[str, datetime] = Field(default_factory=dict)
     payment_type: Optional[str] = None
     payments_received: List[PaymentRecord] = Field(default_factory=list)
@@ -68,6 +74,7 @@ class UserResponse(UserBase):
     revoked: bool = False
     allowed_content: Optional[List[str]] = None
     assigned_profesor_id: Optional[str] = None
+    student_type: Optional[str] = None
     last_reviewed_by: Dict[str, datetime] = Field(default_factory=dict)
     payment_type: Optional[str] = None
     payments_received: List[PaymentRecord] = Field(default_factory=list)
@@ -85,6 +92,7 @@ class UserUpdate(BaseModel):
     expires_at: Optional[datetime] = None
     allowed_content: Optional[List[str]] = None
     assigned_profesor_id: Optional[str] = None
+    student_type: Optional[str] = None
     payment_type: Optional[str] = None
     payments_received: Optional[List[PaymentRecord]] = None
     profile: Optional[Profile] = None

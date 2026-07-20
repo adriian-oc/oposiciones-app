@@ -8,10 +8,20 @@ import RosterTable from '../components/RosterTable';
 import TopFailuresPanel from '../components/TopFailuresPanel';
 import ContentAccessChecklist from '../components/ContentAccessChecklist';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EditUserModal from '../components/EditUserModal';
+import ExpiryEditorModal from '../components/ExpiryEditorModal';
 import { adminService } from '../services/adminService';
 import { accessRequestService } from '../services/accessRequestService';
 import documentService from '../services/documentService';
 import { openGmailCompose } from '../utils/gmailCompose';
+import { useAuth } from '../context/AuthContext';
+
+const ROLE_OPTIONS = [
+  { value: 'student', label: 'Alumno' },
+  { value: 'profesor', label: 'Profesor' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'curator', label: 'Curador' },
+];
 
 // Mismas categorías que backend/api/admin.py::EVENT_LABELS -- colorea por gravedad, no por tipo
 // exacto (varios eventos de Brevo comparten intención: rebotes/spam/bloqueo son todos "fue mal").
@@ -32,6 +42,7 @@ const EMAIL_EVENT_BADGE = {
 
 const Admin = () => {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   // null = panel de tarjetas; si no, la sección abierta: 'upload', 'questions', 'roster', 'requests', 'failures', 'documents'
   const [activeTab, setActiveTab] = useState(null);
 
@@ -102,7 +113,7 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'roster') {
+    if (activeTab === 'roster' || activeTab === 'profesores') {
       loadRoster();
     }
   }, [activeTab, loadRoster]);
@@ -296,6 +307,13 @@ const Admin = () => {
                 label: 'Actividad de Email',
                 description: 'Envíos recientes: entregados, abiertos, rebotados...',
                 testId: 'card-email-activity',
+              },
+              {
+                key: 'profesores',
+                icon: '🧑‍🏫',
+                label: 'Profesores',
+                description: 'Alumnos asignados por profesor: propios y del centro',
+                testId: 'card-profesores',
               },
             ].map((section) => (
               <button
@@ -574,6 +592,56 @@ const Admin = () => {
           </div>
         )}
 
+        {activeTab === 'profesores' && (
+          <div className="bg-white rounded-lg shadow p-6" data-testid="profesores-section">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Alumnos por profesor</h2>
+            {rosterLoading ? (
+              <p className="text-center text-gray-500">Cargando...</p>
+            ) : (
+              (() => {
+                const profesorStats = roster
+                  .filter((u) => u.role === 'profesor')
+                  .map((p) => {
+                    const own = roster.filter((s) => s.role === 'student' && s.assigned_profesor_id === p.id);
+                    const propios = own.filter((s) => s.student_type === 'propio').length;
+                    return { profesor: p, total: own.length, propios, centro: own.length - propios };
+                  });
+                return profesorStats.length === 0 ? (
+                  <p className="text-sm text-gray-500">Todavía no hay profesores en el roster.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profesor</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Alumnos totales</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">🏠 Propios</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">🏫 Del centro</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {profesorStats.map(({ profesor, total, propios, centro }) => (
+                          <tr key={profesor.id}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="flex items-center gap-2">
+                                <Avatar user={profesor} size="sm" />
+                                {profesor.display_name}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{total}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{propios}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{centro}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        )}
+
         {activeTab === 'email-activity' && (
           <div className="bg-white rounded-lg shadow p-6" data-testid="email-activity-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Actividad de Email (Brevo)</h2>
@@ -648,6 +716,7 @@ const Admin = () => {
         <ProfileEditorModal
           user={profileEditingUser}
           roster={roster}
+          currentUserId={currentUser?.id}
           onClose={() => setProfileEditingUser(null)}
           onSave={handleSaveProfile}
           onAvatarUploaded={handleAvatarUploaded}
@@ -708,171 +777,19 @@ const ConvertRequestModal = ({ request, onClose, onSave }) => {
   );
 };
 
-const EditUserModal = ({ user, profesores, onClose, onSave }) => {
-  const [allowedContent, setAllowedContent] = useState(user.allowed_content ?? null);
-  const [assignedProfesorId, setAssignedProfesorId] = useState(user.assigned_profesor_id || '');
-  const [paymentType, setPaymentType] = useState(user.payment_type || 'gratis');
-  const [payments, setPayments] = useState(user.payments_received || []);
-  const [newPaymentAmount, setNewPaymentAmount] = useState('');
-  const [newPaymentNote, setNewPaymentNote] = useState('');
-
-  const addPayment = () => {
-    if (!newPaymentAmount) return;
-    setPayments([
-      ...payments,
-      { amount: parseFloat(newPaymentAmount), date: new Date().toISOString().slice(0, 10), note: newPaymentNote },
-    ]);
-    setNewPaymentAmount('');
-    setNewPaymentNote('');
-  };
-
-  const removePayment = (idx) => setPayments(payments.filter((_, i) => i !== idx));
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({
-      allowed_content: allowedContent,
-      assigned_profesor_id: assignedProfesorId || null,
-      payment_type: paymentType || null,
-      payments_received: payments,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Editar acceso — {user.display_name}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Contenido disponible</label>
-            <ContentAccessChecklist value={allowedContent} onChange={setAllowedContent} />
-          </div>
-          {user.role === 'student' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Profesor asignado</label>
-              <select
-                value={assignedProfesorId}
-                onChange={(e) => setAssignedProfesorId(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                <option value="">Sin asignar</option>
-                {profesores.map((p) => (
-                  <option key={p.id} value={p.id}>{p.display_name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Tipo de pago</label>
-            <select
-              value={paymentType}
-              onChange={(e) => setPaymentType(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="gratis">🎁 Gratis</option>
-              <option value="pago">💰 Pago</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pagos recibidos</label>
-            {payments.length > 0 && (
-              <ul className="text-sm text-gray-700 mb-2 space-y-1">
-                {payments.map((p, idx) => (
-                  <li key={idx} className="flex justify-between items-center bg-gray-50 rounded px-2 py-1">
-                    <span>{p.amount}€ — {p.date} {p.note && `(${p.note})`}</span>
-                    <button type="button" onClick={() => removePayment(idx)} className="text-red-500 text-xs">✕</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Importe"
-                value={newPaymentAmount}
-                onChange={(e) => setNewPaymentAmount(e.target.value)}
-                className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Nota"
-                value={newPaymentNote}
-                onChange={(e) => setNewPaymentNote(e.target.value)}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
-              />
-              <button type="button" onClick={addPayment} className="px-2 py-1 bg-gray-200 rounded-md text-sm">+</button>
-            </div>
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
-              Cancelar
-            </button>
-            <button type="submit" className="flex-1 py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700">
-              Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const ExpiryEditorModal = ({ user, onClose, onSave }) => {
-  const [date, setDate] = useState(user.expires_at ? user.expires_at.slice(0, 10) : '');
-  const [noLimit, setNoLimit] = useState(!user.expires_at);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(noLimit ? null : new Date(date + 'T23:59:59').toISOString());
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Caducidad de acceso — {user.display_name}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={noLimit} onChange={(e) => setNoLimit(e.target.checked)} />
-            Sin límite
-          </label>
-          {!noLimit && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Fecha de caducidad</label>
-              <input
-                required
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-          )}
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
-              Cancelar
-            </button>
-            <button type="submit" className="flex-1 py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700">
-              Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 const PREP_TIME_OPTIONS = ['', 'Sin empezar', 'Menos de 6 meses', '6 meses - 1 año', '1 - 2 años', 'Más de 2 años'];
 
-const ProfileEditorModal = ({ user, roster, onClose, onSave, onAvatarUploaded }) => {
+const ProfileEditorModal = ({ user, roster, currentUserId, onClose, onSave, onAvatarUploaded }) => {
   const profile = user.profile || {};
   const isStudent = user.role === 'student';
+  const isSelf = user.id === currentUserId;
   const [fullName, setFullName] = useState(profile.full_name || user.display_name || '');
   const [birthDate, setBirthDate] = useState(profile.birth_date || '');
   const [prepTime, setPrepTime] = useState(profile.prep_time || '');
   const [prepWith, setPrepWith] = useState(profile.prep_with || '');
   const [weakPoints, setWeakPoints] = useState(profile.weak_points || '');
   const [linkedUserId, setLinkedUserId] = useState(user.linked_user_id || '');
+  const [role, setRole] = useState(user.role);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const fileInputRef = useRef(null);
@@ -909,6 +826,9 @@ const ProfileEditorModal = ({ user, roster, onClose, onSave, onAvatarUploaded })
         weak_points: weakPoints.trim() || null,
       },
       ...(!isStudent && { linked_user_id: linkedUserId || null }),
+      // Solo se manda si de verdad cambió -- si no, un simple "guardar el nombre" sobre la
+      // propia cuenta no debe tropezar con el bloqueo de "no puedes cambiar tu propio rol".
+      ...(role !== user.role && { role }),
     });
   };
 
@@ -950,6 +870,22 @@ const ProfileEditorModal = ({ user, roster, onClose, onSave, onAvatarUploaded })
           <div>
             <label className="block text-sm font-medium text-gray-700">Correo (no editable, es su acceso)</label>
             <input type="text" value={user.email} disabled className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Rol</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              disabled={isSelf}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+            >
+              {ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {isSelf && (
+              <p className="mt-1 text-xs text-gray-500">No puedes cambiar tu propio rol desde aquí.</p>
+            )}
           </div>
           {!isStudent && (
             <div>

@@ -16,6 +16,14 @@ from services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
+# Campos que un profesor puede tocar sobre sus alumnos PROPIOS vía PATCH /students/{id} --
+# allowlist a propósito (no blocklist): cualquier campo nuevo que se añada a UserUpdate en el
+# futuro queda fuera para un profesor hasta que se decida explícitamente lo contrario, en vez de
+# quedar expuesto por descuido. role/assigned_profesor_id/linked_user_id/revoked/student_type
+# siguen siendo solo-admin incluso para alumnos propios (crear cuenta, cambiar rol, reasignar
+# profesor y marcar propio/centro no entran en "gestionar mis alumnos").
+PROFESOR_EDITABLE_FIELDS = {"allowed_content", "payment_type", "payments_received", "expires_at"}
+
 
 def _has_novedades(user: dict, progress: dict, staff_id: str) -> bool:
     """Compara progress.updated_at contra la última vez que ESTE miembro del staff revisó a
@@ -58,6 +66,21 @@ class AdminService:
         self.message_repo = MessageRepository()
         self.email_service = EmailService()
         self.notification_service = NotificationService()
+
+    def _authorize_own_student(self, acting_user: dict, target_user: dict) -> None:
+        """admin: sin restricción sobre nadie. profesor: solo sobre SUS alumnos marcados
+        'propio' (ver student_type en models/user.py) -- un alumno 'centro' del mismo profesor,
+        o de otro profesor, sigue siendo solo-admin. Cualquier otro rol, 403."""
+        if acting_user["role"] == "admin":
+            return
+        if (
+            acting_user["role"] == "profesor"
+            and target_user.get("role") == "student"
+            and target_user.get("assigned_profesor_id") == acting_user["id"]
+            and target_user.get("student_type") == "propio"
+        ):
+            return
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No autorizado")
 
     async def _record_system_message(self, user_id: str, text: str) -> None:
         """Cada correo automático (bienvenida, restablecer contraseña, aviso de migración...)
@@ -102,10 +125,11 @@ class AdminService:
         await self._send_reset_link(user.id, user.email, user.display_name, is_new_account=True)
         return user
 
-    async def send_password_reset(self, user_id: str) -> str:
+    async def send_password_reset(self, user_id: str, acting_user: dict) -> str:
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        self._authorize_own_student(acting_user, user)
         return await self._send_reset_link(user["id"], user["email"], user.get("display_name"), is_new_account=False)
 
     async def _send_reset_link(self, user_id: str, email: str, display_name: str, is_new_account: bool) -> str:
@@ -124,10 +148,24 @@ class AdminService:
         await self._record_system_message(user_id, message_text)
         return link
 
-    async def update_student(self, user_id: str, update: UserUpdate) -> dict:
+    async def update_student(self, user_id: str, update: UserUpdate, acting_user: dict) -> dict:
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        self._authorize_own_student(acting_user, user)
+
+        if acting_user["role"] == "profesor":
+            extra_fields = update.model_fields_set - PROFESOR_EDITABLE_FIELDS
+            if extra_fields:
+                raise HTTPException(
+                    status.HTTP_403_FORBIDDEN,
+                    f"Un profesor no puede cambiar: {', '.join(sorted(extra_fields))}",
+                )
+        elif "role" in update.model_fields_set and user_id == acting_user["id"]:
+            # Un admin no puede quitarse su propio rol de admin desde este control -- evitaría
+            # quedarse fuera del panel por accidente (sí puede cambiar el rol de CUALQUIER otro).
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "No puedes cambiar tu propio rol")
+
         updated = await self.user_repo.update_fields(user_id, update)
 
         if "linked_user_id" in update.model_fields_set:
@@ -150,12 +188,13 @@ class AdminService:
 
         return updated
 
-    async def set_revoked(self, user_id: str, revoked: bool) -> dict:
+    async def set_revoked(self, user_id: str, revoked: bool, acting_user: dict) -> dict:
         """Revocar nunca borra la cuenta ni el doc de roster -- si se borrara, el email
         quedaría huérfano en "ya en uso" sin ningún documento que lo gestione."""
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+        self._authorize_own_student(acting_user, user)
         return await self.user_repo.set_revoked(user_id, revoked)
 
     async def send_migration_announcement(self, trial_days: int = 3) -> int:

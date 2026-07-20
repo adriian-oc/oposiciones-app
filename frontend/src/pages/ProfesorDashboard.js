@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TopFailuresPanel from '../components/TopFailuresPanel';
+import RosterTable from '../components/RosterTable';
+import ConfirmDialog from '../components/ConfirmDialog';
+import EditUserModal from '../components/EditUserModal';
+import ExpiryEditorModal from '../components/ExpiryEditorModal';
 import { profesorService } from '../services/profesorService';
 import { adminService } from '../services/adminService';
 import { themeService } from '../services/themeService';
@@ -18,9 +22,10 @@ const DOC_STATUS_CLASS = {
 };
 
 const ProfesorDashboard = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('students'); // 'students' | 'failures' | 'documents'
+  const [activeTab, setActiveTab] = useState('students'); // 'students' | 'failures' | 'documents' | 'own-admin'
 
   const [documents, setDocuments] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -30,6 +35,14 @@ const ProfesorDashboard = () => {
   const [docFile, setDocFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+
+  // Administración de alumnos PROPIOS (ver EditUserModal/AdminService.PROFESOR_EDITABLE_FIELDS
+  // en el backend) -- mismos modales que usa Admin.js, con adminOnly=false para no dejar
+  // reasignar profesor ni cambiar propio/centro, eso se queda solo en el admin.
+  const [editingUser, setEditingUser] = useState(null);
+  const [expiryEditingUser, setExpiryEditingUser] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const ownStudents = students.filter((s) => s.student_type === 'propio');
 
   const load = useCallback(async () => {
     try {
@@ -93,6 +106,47 @@ const ProfesorDashboard = () => {
     load();
   };
 
+  const handleSaveEdit = async (update) => {
+    await adminService.updateStudent(editingUser.id, update);
+    setEditingUser(null);
+    load();
+  };
+
+  const handleSaveExpiry = async (expiresAt) => {
+    await adminService.updateStudent(expiryEditingUser.id, { expires_at: expiresAt });
+    setExpiryEditingUser(null);
+    load();
+  };
+
+  const handleSendReset = async (u) => {
+    try {
+      const { reset_link: resetLink } = await adminService.sendPasswordReset(u.id);
+      navigator.clipboard.writeText(resetLink);
+      alert(`Correo enviado a ${u.email} con su enlace para fijar contraseña (también copiado por si acaso, válido 24h):\n${resetLink}`);
+    } catch (error) {
+      alert('Error al generar el enlace: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handleRevoke = (u) => {
+    setConfirmDialog({
+      message: `¿Revocar el acceso de ${u.display_name}? No se borra la cuenta.`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await adminService.revokeStudent(u.id);
+        load();
+      },
+    });
+  };
+
+  const handleReactivate = async (u) => {
+    await adminService.reactivateStudent(u.id);
+    load();
+  };
+
+  const handleViewProgress = (u) => navigate(`/progreso/${u.id}`);
+
   if (loading) {
     return (
       <Layout>
@@ -137,6 +191,17 @@ const ProfesorDashboard = () => {
               }`}
             >
               Mis Documentos
+            </button>
+            <button
+              onClick={() => setActiveTab('own-admin')}
+              className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'own-admin'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              data-testid="tab-own-admin"
+            >
+              🏠 Administrar Propios {ownStudents.length > 0 && `(${ownStudents.length})`}
             </button>
           </nav>
         </div>
@@ -265,7 +330,57 @@ const ProfesorDashboard = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'own-admin' && (
+          <div data-testid="own-admin-section">
+            {ownStudents.length === 0 ? (
+              <p className="text-gray-500">
+                Todavía no tienes alumnos marcados como propios. Pídele al admin que marque a un
+                alumno como "🏠 Propio" tuyo desde Administración → Alumnos → ✏️ Acceso.
+              </p>
+            ) : (
+              <RosterTable
+                users={ownStudents}
+                profesores={[]}
+                onRevoke={handleRevoke}
+                onReactivate={handleReactivate}
+                onEditContent={setEditingUser}
+                onSendReset={handleSendReset}
+                onMarkReviewed={(u) => handleMarkReviewed(u.id)}
+                onEditExpiry={setExpiryEditingUser}
+                onViewProgress={handleViewProgress}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          profesores={[]}
+          adminOnly={false}
+          onClose={() => setEditingUser(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
+
+      {expiryEditingUser && (
+        <ExpiryEditorModal
+          user={expiryEditingUser}
+          onClose={() => setExpiryEditingUser(null)}
+          onSave={handleSaveExpiry}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          message={confirmDialog.message}
+          danger={confirmDialog.danger}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </Layout>
   );
 };
