@@ -17,27 +17,30 @@ LOCAL_UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 class StorageService:
     """Almacenamiento de archivos (avatares, documentos de profesor, adjuntos de chat) en
-    Cloudflare R2 (API compatible S3) -- persistente de verdad, a diferencia del disco local del
-    backend. Sin credenciales de R2 configuradas, cae de vuelta a disco local (mismo
-    comportamiento de antes) para poder seguir desarrollando sin cuenta de R2."""
+    Backblaze B2 (API compatible S3) -- persistente de verdad, a diferencia del disco local del
+    backend. Sin credenciales de B2 configuradas, cae de vuelta a disco local (mismo
+    comportamiento de antes) para poder seguir desarrollando sin cuenta de B2."""
 
     def __init__(self):
         self.enabled = bool(
-            settings.r2_account_id and settings.r2_access_key_id and settings.r2_secret_access_key
+            settings.b2_endpoint and settings.b2_key_id and settings.b2_application_key
         )
         if self.enabled:
-            self.bucket = settings.r2_bucket_name
-            self.public_base_url = settings.r2_public_url.rstrip("/")
+            self.bucket = settings.b2_bucket_name
+            self.public_base_url = (
+                settings.b2_public_url.rstrip("/")
+                if settings.b2_public_url
+                else f"https://{settings.b2_endpoint}/{self.bucket}"
+            )
             self._client = boto3.client(
                 "s3",
-                endpoint_url=f"https://{settings.r2_account_id}.r2.cloudflarestorage.com",
-                aws_access_key_id=settings.r2_access_key_id,
-                aws_secret_access_key=settings.r2_secret_access_key,
+                endpoint_url=f"https://{settings.b2_endpoint}",
+                aws_access_key_id=settings.b2_key_id,
+                aws_secret_access_key=settings.b2_application_key,
                 config=BotoConfig(signature_version="s3v4"),
-                region_name="auto",
             )
         else:
-            logger.info("R2 no configurado -- StorageService usa disco local (solo desarrollo)")
+            logger.info("B2 no configurado -- StorageService usa disco local (solo desarrollo)")
 
     def save(self, folder: str, filename: str, content: bytes, content_type: str) -> str:
         """Guarda el archivo y devuelve el valor a persistir en Mongo (avatar_path/file_path/
