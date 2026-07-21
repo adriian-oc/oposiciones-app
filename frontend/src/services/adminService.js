@@ -41,6 +41,11 @@ export const adminService = {
     return response.data;
   },
 
+  async sendContentUpdateAnnouncement() {
+    const response = await api.post('/api/admin/content-updates/temario-novedad-2026');
+    return response.data;
+  },
+
   async uploadAvatar(userId, file) {
     const formData = new FormData();
     formData.append('file', file);

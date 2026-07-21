@@ -20,13 +20,18 @@ class NotificationService:
     async def notify_all_students(self, type: str, title: str, message: str, link: str) -> int:
         """Difusión masiva (p.ej. novedad de temario) a todos los alumnos no revocados.
         Devuelve el número de alumnos avisados."""
-        students = [
+        return await self.notify_bulk(["student"], type, title, message, link)
+
+    async def notify_bulk(self, roles: list, type: str, title: str, message: str, link: str) -> int:
+        """Igual que notify_all_students pero para cualquier conjunto de roles (p.ej.
+        alumnos + profesores en una novedad de temario). Devuelve cuántos se avisaron."""
+        recipients = [
             u for u in await self.user_repo.list_all()
-            if u.get("role") == "student" and not u.get("revoked")
+            if u.get("role") in roles and not u.get("revoked")
         ]
-        for student in students:
-            await self.notify(student["id"], type, title, message, link)
-        return len(students)
+        for recipient in recipients:
+            await self.notify(recipient["id"], type, title, message, link)
+        return len(recipients)
 
     async def get_unread(self, user_id: str) -> list:
         return await self.repo.get_unread(user_id)

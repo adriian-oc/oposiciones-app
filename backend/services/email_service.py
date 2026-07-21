@@ -164,3 +164,23 @@ class EmailService:
         <p style="font-size: 13px; color: #6b7280;">Este enlace caduca en 24 horas.</p>
         """
         self.send(to_email, to_name, subject, self._layout(body))
+
+    def send_content_update_email(self, to_email: str, to_name: str, app_link: str) -> None:
+        subject = "Temario actualizado en ADOC: IMV y cotización por prácticas"
+        body = f"""
+        <p>Hola {html.escape(to_name)},</p>
+        <p>Hemos actualizado el temario con dos novedades recientes de la Seguridad Social:</p>
+        <ul style="padding-left: 18px;">
+          <li style="margin-bottom: 8px;"><strong>Tema 12 (IMV)</strong>: la Ley 1/2026, de 8 de
+          abril, reforma la Ley 19/2021 del Ingreso Mínimo Vital (revisión de la unidad de
+          convivencia y doble actualización anual de la cuantía), en vigor desde el
+          10/04/2026.</li>
+          <li><strong>Tema 4 (Cotización)</strong>: nuevo convenio especial para recuperar hasta
+          5 años de cotización por prácticas formativas anteriores a 2024, con plazo de
+          solicitud hasta el 31/12/2028.</li>
+        </ul>
+        <p>Los PDF de ambos temas ya están al día, marcados con la insignia <strong>NEW</strong>
+        en Cuadernos.</p>
+        {self._button(app_link, "Entrar a ADOC")}
+        """
+        self.send(to_email, to_name, subject, self._layout(body))

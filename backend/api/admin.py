@@ -141,3 +141,12 @@ async def send_migration_announcement(current_user: dict = Depends(require_role(
     activos y les manda el correo con ese aviso + su enlace para fijar contraseña."""
     sent = await get_admin_service().send_migration_announcement()
     return {"sent": sent}
+
+
+@router.post("/content-updates/temario-novedad-2026")
+async def send_content_update_announcement(current_user: dict = Depends(require_role(["admin"]))):
+    """Aviso puntual de la novedad de temario de julio 2026 (IMV Ley 1/2026 en Tema 12,
+    convenio especial de cotización por prácticas en Tema 4): marca ambos temas como NEW y
+    avisa a todos los alumnos y profesores activos, por email y por notificación in-app."""
+    sent = await get_admin_service().send_content_update_announcement()
+    return {"sent": sent}

@@ -229,3 +229,46 @@ class AdminService:
             ))
             sent += 1
         return sent
+
+    async def send_content_update_announcement(self) -> int:
+        """Novedad de temario julio 2026 (IMV Ley 1/2026 en Tema 12, convenio especial de
+        cotización por prácticas en Tema 4): marca ambos content_units como NEW y avisa a todos
+        los alumnos y profesores activos, por email y por notificación in-app. Devuelve cuántos
+        recibieron el aviso."""
+        from repositories.content_unit_repository import ContentUnitRepository
+        from repositories.theme_repository import ThemeRepository
+
+        theme_repo = ThemeRepository()
+        unit_repo = ContentUnitRepository()
+        for code in ("SPECIFIC_4", "SPECIFIC_12"):
+            theme = await theme_repo.get_by_code(code)
+            if theme:
+                await unit_repo.set_is_new("tesp", theme["id"], True)
+
+        recipients = [
+            u for u in await self.user_repo.list_all()
+            if u.get("role") in ("student", "profesor") and not u.get("revoked")
+        ]
+        app_link = settings.frontend_base_url
+        title = "Temario actualizado"
+        message = (
+            "Tema 12 (IMV): reforma de la Ley 1/2026. Tema 4 (Cotización): nuevo convenio "
+            "especial para recuperar cotización por prácticas anteriores a 2024."
+        )
+        sent = 0
+        for recipient in recipients:
+            await self.notification_service.notify(
+                recipient["id"], "content_update", title, message, "/cuadernos",
+            )
+            if recipient.get("email"):
+                self.email_service.send_content_update_email(
+                    to_email=recipient["email"],
+                    to_name=recipient.get("display_name") or recipient["email"],
+                    app_link=app_link,
+                )
+                await self._record_system_message(
+                    recipient["id"],
+                    f"{title}: {message} Entra en {app_link} para verlo.",
+                )
+            sent += 1
+        return sent

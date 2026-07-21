@@ -75,6 +75,7 @@ const Admin = () => {
   const [emailActivity, setEmailActivity] = useState([]);
   const [emailActivityLoading, setEmailActivityLoading] = useState(false);
   const [emailActivityError, setEmailActivityError] = useState('');
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
   const loadRoster = useCallback(async () => {
     setRosterLoading(true);
@@ -113,7 +114,7 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'roster' || activeTab === 'profesores') {
+    if (activeTab === 'roster' || activeTab === 'profesores' || activeTab === 'content-update') {
       loadRoster();
     }
   }, [activeTab, loadRoster]);
@@ -211,6 +212,28 @@ const Admin = () => {
         setConfirmDialog(null);
         await adminService.revokeStudent(u.id);
         loadRoster();
+      },
+    });
+  };
+
+  const handleSendContentUpdateAnnouncement = () => {
+    const recipientCount = roster.filter(
+      (u) => (u.role === 'student' || u.role === 'profesor') && !u.revoked
+    ).length;
+    setConfirmDialog({
+      message: `Se enviará un correo real y una notificación a ${recipientCount} alumnos y profesores activos, invitándoles a entrar a ver la novedad del Tema 4 y el Tema 12. Esta acción no se puede deshacer. ¿Continuar?`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setSendingAnnouncement(true);
+        try {
+          const { sent } = await adminService.sendContentUpdateAnnouncement();
+          alert(`Aviso enviado a ${sent} alumnos y profesores.`);
+        } catch (error) {
+          alert('Error al enviar el aviso: ' + (error.response?.data?.detail || error.message));
+        } finally {
+          setSendingAnnouncement(false);
+        }
       },
     });
   };
@@ -314,6 +337,13 @@ const Admin = () => {
                 label: 'Profesores',
                 description: 'Alumnos asignados por profesor: propios y del centro',
                 testId: 'card-profesores',
+              },
+              {
+                key: 'content-update',
+                icon: '📣',
+                label: 'Novedad de temario',
+                description: 'Avisa a alumnos y profesores de la actualización del Tema 4 y el Tema 12',
+                testId: 'card-content-update',
               },
             ].map((section) => (
               <button
@@ -639,6 +669,30 @@ const Admin = () => {
                 );
               })()
             )}
+          </div>
+        )}
+
+        {activeTab === 'content-update' && (
+          <div className="bg-white rounded-lg shadow p-6" data-testid="content-update-section">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Novedad de temario — julio 2026</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Marca como <strong>NEW</strong> el Tema 4 (nuevo convenio especial de cotización por
+              prácticas) y el Tema 12 (reforma del IMV por la Ley 1/2026), y avisa por email y por
+              notificación a todos los alumnos y profesores activos, invitándoles a entrar a ADOC.
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              {rosterLoading
+                ? 'Calculando destinatarios...'
+                : `Destinatarios: ${roster.filter((u) => (u.role === 'student' || u.role === 'profesor') && !u.revoked).length} alumnos y profesores activos.`}
+            </p>
+            <button
+              onClick={handleSendContentUpdateAnnouncement}
+              disabled={sendingAnnouncement || rosterLoading}
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+              data-testid="send-content-update-button"
+            >
+              {sendingAnnouncement ? 'Enviando...' : '📣 Enviar aviso de novedad'}
+            </button>
           </div>
         )}
 
