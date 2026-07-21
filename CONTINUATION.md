@@ -61,6 +61,7 @@ Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo
 - Icono de la app al añadir a pantalla de inicio (manifest.json, apple-touch-icon).
 - Banco de "Preguntas sin lanzar" (`draft_questions`) para publicar tras una novedad de temario, como Cuadernillo o Supuesto nuevo — código desplegado, falta sembrar en producción (punto 2).
 - Corregido bug "Acceso Denegado" al volver de vista de análisis de alumno (profesor).
+- Arreglada la barra de navegación que se aplastaba en anchos intermedios de ventana (breakpoint subido de 640px a 1024px).
 
 ## Notas de proceso importantes
 
