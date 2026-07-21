@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from pydantic import BaseModel, EmailStr
 from typing import List
 
@@ -139,6 +139,45 @@ async def get_email_activity(current_user: dict = Depends(require_role(["admin"]
         }
         for e in events
     ]
+
+
+def _pct(numerator: float, denominator: float) -> float:
+    return round(numerator / denominator * 100, 2) if denominator else 0.0
+
+
+@router.get("/email-stats")
+async def get_email_stats(
+    days: int = Query(7, ge=1, le=90),
+    current_user: dict = Depends(require_role(["admin"])),
+):
+    """Resumen agregado (misma vista que Estadísticas > Transaccional del panel de Brevo) para
+    los últimos `days` días -- ver EmailService.get_aggregated_stats. Los porcentajes se calculan
+    aquí en el backend para que el frontend solo tenga que pintarlos."""
+    try:
+        raw = EmailService().get_aggregated_stats(days)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Fallo al consultar estadísticas de email en Brevo: {e}")
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudieron consultar las estadísticas de email")
+
+    if raw is None:
+        return None
+
+    sent = raw.get("requests", 0)
+    delivered = raw.get("delivered", 0)
+    hard_bounces = raw.get("hardBounces", 0)
+    soft_bounces = raw.get("softBounces", 0)
+    return {
+        "sent": sent,
+        "delivered_pct": _pct(delivered, sent),
+        "opens_pct": _pct(raw.get("uniqueOpens", 0), delivered),
+        "trackable_pct": _pct(sent - raw.get("invalid", 0), sent),
+        "unique_clicks_pct": _pct(raw.get("uniqueClicks", 0), delivered),
+        "bounced_pct": _pct(hard_bounces + soft_bounces, sent),
+        "complaint_pct": _pct(raw.get("spamReports", 0), sent),
+        "hard_bounce_pct": _pct(hard_bounces, sent),
+        "soft_bounce_pct": _pct(soft_bounces, sent),
+        "blocked_pct": _pct(raw.get("blocked", 0), sent),
+    }
 
 
 @router.post("/send-recruitment-email")

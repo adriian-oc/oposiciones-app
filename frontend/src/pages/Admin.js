@@ -10,6 +10,7 @@ import ContentAccessChecklist from '../components/ContentAccessChecklist';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EditUserModal from '../components/EditUserModal';
 import ExpiryEditorModal from '../components/ExpiryEditorModal';
+import DraftQuestionsBank from '../components/DraftQuestionsBank';
 import { adminService } from '../services/adminService';
 import { accessRequestService } from '../services/accessRequestService';
 import documentService from '../services/documentService';
@@ -79,6 +80,8 @@ const Admin = () => {
   const [emailActivity, setEmailActivity] = useState([]);
   const [emailActivityLoading, setEmailActivityLoading] = useState(false);
   const [emailActivityError, setEmailActivityError] = useState('');
+  const [emailStats, setEmailStats] = useState(null);
+  const [emailStatsLoading, setEmailStatsLoading] = useState(false);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
   const loadRoster = useCallback(async () => {
@@ -134,6 +137,12 @@ const Admin = () => {
         setEmailActivityError(error.response?.data?.detail || 'No se pudo cargar la actividad de email');
       })
       .finally(() => setEmailActivityLoading(false));
+
+    setEmailStatsLoading(true);
+    adminService.getEmailStats(7)
+      .then(setEmailStats)
+      .catch((error) => console.error('Error loading email stats:', error))
+      .finally(() => setEmailStatsLoading(false));
   }, [activeTab]);
 
   // Solicitudes y documentos pendientes se cargan siempre al entrar al panel (no solo al abrir su
@@ -725,9 +734,61 @@ const Admin = () => {
           </div>
         )}
 
+        {activeTab === 'content-update' && (
+          <div className="bg-white rounded-lg shadow p-6 mt-6" data-testid="draft-questions-section">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">🗂️ Preguntas sin lanzar</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Preguntas generadas para las novedades de temario, todavía sin publicar. Revísalas,
+              edítalas si hace falta, selecciona las que quieras y publícalas como Cuadernillo
+              (se añaden al cuadernillo ya existente del tema) o como Supuesto nuevo.
+            </p>
+            <DraftQuestionsBank />
+          </div>
+        )}
+
         {activeTab === 'email-activity' && (
           <div className="bg-white rounded-lg shadow p-6" data-testid="email-activity-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Actividad de Email (Brevo)</h2>
+
+            <div className="mb-6 pb-6 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Estadísticas (últimos 7 días)</h3>
+              {emailStatsLoading ? (
+                <p className="text-sm text-gray-500">Cargando...</p>
+              ) : !emailStats ? (
+                <p className="text-sm text-gray-500">Sin BREVO_API_KEY configurada, no hay estadísticas.</p>
+              ) : (
+                <div>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-3xl font-bold text-gray-900">{emailStats.sent}</span>
+                    <span className="text-sm text-gray-500">emails enviados</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Entregado', value: emailStats.delivered_pct, color: 'bg-blue-500' },
+                      { label: 'Aperturas estimadas', value: emailStats.opens_pct, color: 'bg-teal-500' },
+                      { label: 'Destinatarios rastreables', value: emailStats.trackable_pct, color: 'bg-teal-500' },
+                      { label: 'Clicadores únicos', value: emailStats.unique_clicks_pct, color: 'bg-green-500' },
+                      { label: 'Rebotado', value: emailStats.bounced_pct, color: 'bg-red-500' },
+                      { label: 'Queja', value: emailStats.complaint_pct, color: 'bg-gray-400' },
+                      { label: 'Hard bounce', value: emailStats.hard_bounce_pct, color: 'bg-red-500' },
+                      { label: 'Soft bounce', value: emailStats.soft_bounce_pct, color: 'bg-amber-500' },
+                      { label: 'Bloqueado', value: emailStats.blocked_pct, color: 'bg-gray-500' },
+                    ].map((m) => (
+                      <div key={m.label}>
+                        <div className="flex items-baseline justify-between text-xs text-gray-600 mb-1">
+                          <span>{m.label}</span>
+                          <span className="font-medium">{m.value.toFixed(2)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${m.color}`} style={{ width: `${Math.min(m.value, 100)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {emailActivityLoading ? (
               <p className="text-center text-gray-500">Cargando...</p>
             ) : emailActivityError ? (

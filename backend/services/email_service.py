@@ -1,5 +1,6 @@
 import html
 import logging
+from datetime import date, timedelta
 from typing import List, Optional
 
 import requests
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email"
 BREVO_EVENTS_ENDPOINT = "https://api.brevo.com/v3/smtp/statistics/events"
+BREVO_AGGREGATED_ENDPOINT = "https://api.brevo.com/v3/smtp/statistics/aggregatedReport"
 
 
 class EmailService:
@@ -57,6 +59,23 @@ class EmailService:
         )
         response.raise_for_status()
         return response.json().get("events", [])
+
+    def get_aggregated_stats(self, days: int = 7) -> Optional[dict]:
+        """Resumen agregado (misma vista que Estadísticas > Transaccional del panel de Brevo:
+        entregado, aperturas, clics, rebotes...) para los últimos `days` días -- ver GET
+        /api/admin/email-stats. None sin BREVO_API_KEY configurada."""
+        if not settings.brevo_api_key:
+            return None
+        end = date.today()
+        start = end - timedelta(days=days - 1)
+        response = requests.get(
+            BREVO_AGGREGATED_ENDPOINT,
+            headers={"api-key": settings.brevo_api_key, "Accept": "application/json"},
+            params={"startDate": start.isoformat(), "endDate": end.isoformat()},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
 
     def _layout(self, body_html: str) -> str:
         """Envoltorio visual común (logo + tarjeta + pie) para todos los correos -- la URL del
