@@ -1,20 +1,14 @@
 from repositories.document_submission_repository import DocumentSubmissionRepository
 from repositories.user_repository import UserRepository
 from services.notification_service import NotificationService
+from services.storage_service import StorageService
 from models.document_submission import DocumentSubmissionInDB
 from fastapi import HTTPException, status, UploadFile
-from pathlib import Path
 from typing import List, Optional
 import uuid
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Almacenamiento en disco local -- solución de DESARROLLO, no definitiva. El disco del backend
-# no es persistente ni se comparte con el frontend en un despliegue real (Render/Railway +
-# Vercel/Netlify, Fase 8); antes de desplegar en serio hace falta un storage real
-# (S3-compatible, Firebase Storage, Cloudinary...) y migrar file_path a una URL absoluta.
-UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads" / "documents"
 
 
 class DocumentSubmissionService:
@@ -22,21 +16,21 @@ class DocumentSubmissionService:
         self.repo = DocumentSubmissionRepository()
         self.user_repo = UserRepository()
         self.notification_service = NotificationService()
+        self.storage = StorageService()
 
     async def submit(self, area_id: str, theme_id: str, file: UploadFile, uploaded_by: str) -> dict:
         if file.content_type != "application/pdf":
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Solo se admiten archivos PDF")
 
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         stored_name = f"{uuid.uuid4()}.pdf"
         content = await file.read()
-        (UPLOAD_DIR / stored_name).write_bytes(content)
+        file_path = self.storage.save("documents", stored_name, content, file.content_type)
 
         doc = DocumentSubmissionInDB(
             area_id=area_id,
             theme_id=theme_id,
             uploaded_by=uploaded_by,
-            file_path=f"documents/{stored_name}",
+            file_path=file_path,
             original_filename=file.filename or stored_name,
         )
         created = await self.repo.create(doc)

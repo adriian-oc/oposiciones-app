@@ -1,11 +1,9 @@
 import uuid
-from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
 
-# Mismo patrón y misma limitación de disco local (no persistente en un despliegue real) que
-# avatar_service.py / document_submission_service.py -- ver aviso ahí.
-UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads" / "chat"
+from services.storage_service import StorageService
+
 MAX_BYTES = 15 * 1024 * 1024
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg": "jpg",
@@ -22,6 +20,9 @@ ALLOWED_CONTENT_TYPES = {
 
 
 class ChatAttachmentService:
+    def __init__(self):
+        self.storage = StorageService()
+
     async def upload(self, file: UploadFile) -> dict:
         extension = ALLOWED_CONTENT_TYPES.get(file.content_type)
         if not extension:
@@ -35,12 +36,11 @@ class ChatAttachmentService:
         if len(content) > MAX_BYTES:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "El archivo no puede superar los 15 MB")
 
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         stored_name = f"{uuid.uuid4()}.{extension}"
-        (UPLOAD_DIR / stored_name).write_bytes(content)
+        attachment_path = self.storage.save("chat", stored_name, content, file.content_type)
 
         return {
-            "attachment_path": f"chat/{stored_name}",
+            "attachment_path": attachment_path,
             "attachment_name": file.filename or stored_name,
             "attachment_type": "image" if file.content_type.startswith("image/") else "file",
         }

@@ -6,9 +6,9 @@ import { messageService } from '../services/messageService';
 import { profesorService } from '../services/profesorService';
 import { adminService } from '../services/adminService';
 import { useAuth } from '../context/AuthContext';
+import { resolveFileUrl } from '../utils/fileUrl';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
-const attachmentUrl = (path) => `${API_BASE_URL}/uploads/${path}`;
+const attachmentUrl = (path) => resolveFileUrl(path);
 
 const ROLE_ICON = { student: '🎓', profesor: '🧑‍🏫', admin: '🛠️' };
 const ATTACHMENT_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,.doc,.docx,.xls,.xlsx,.txt';

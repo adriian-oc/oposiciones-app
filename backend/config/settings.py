@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     brevo_sender_email: str = "oposicionesadoc@gmail.com"
     brevo_sender_name: str = "ADOC"
 
+    # Almacenamiento persistente de archivos (avatares, documentos de profesor, adjuntos de
+    # chat) en Cloudflare R2 -- reemplaza el disco local de backend/uploads/, que en Render se
+    # borra en cada reinicio/sueño del servicio (ver services/storage_service.py). Sin
+    # r2_account_id configurado, los servicios de subida caen de vuelta al disco local (por si
+    # se quiere seguir desarrollando sin cuenta de R2).
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket_name: str = "adoc-uploads"
+    r2_public_url: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -1,6 +1,5 @@
 import api from './api';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+import { resolveFileUrl } from '../utils/fileUrl';
 
 const documentService = {
   async submit(areaId, themeId, file) {
@@ -34,10 +33,8 @@ const documentService = {
     return response.data;
   },
 
-  // file_path se guarda relativo ("documents/<uuid>.pdf"), servido desde /uploads -- ver
-  // StaticFiles mount en backend/server.py (solo desarrollo, ver nota en el servicio backend).
   fileUrl(doc) {
-    return `${API_BASE_URL}/uploads/${doc.file_path}`;
+    return resolveFileUrl(doc.file_path);
   },
 };
 
