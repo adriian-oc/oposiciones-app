@@ -470,6 +470,7 @@ const Admin = () => {
               <RosterTable
                 users={roster}
                 profesores={roster.filter((u) => u.role === 'profesor')}
+                viewerRole="admin"
                 onRevoke={handleRevoke}
                 onReactivate={handleReactivate}
                 onSendReset={handleSendReset}

@@ -27,10 +27,21 @@ def test_chat_requires_assignment(client, admin_user, profesor_user, student_use
     r = client.post(f"/api/messages/{student_user['id']}", headers=other_student_user["headers"], json={"text": "hola"})
     assert r.status_code == 403
 
-    # el admin puede leer cualquier hilo
+    # el admin YA NO puede leer el canal del alumno con su profesor -- son conversaciones
+    # independientes (ver ADMIN_CHANNEL_SUFFIX en message_service.py)
     r = client.get(f"/api/messages/{student_user['id']}", headers=admin_user["headers"])
+    assert r.status_code == 403
+
+    # pero el alumno tiene un canal aparte con administración, ahí el admin sí puede entrar
+    r = client.post(f"/api/messages/{student_user['id']}:admin", headers=student_user["headers"], json={"text": "Hola admin"})
+    assert r.status_code == 201
+    r = client.get(f"/api/messages/{student_user['id']}:admin", headers=admin_user["headers"])
     assert r.status_code == 200
-    assert len(r.json()) == 2
+    assert len(r.json()) == 1
+
+    # y el profesor asignado NO puede entrar al canal de administración de su propio alumno
+    r = client.get(f"/api/messages/{student_user['id']}:admin", headers=profesor_user["headers"])
+    assert r.status_code == 403
 
 
 def test_profesor_not_assigned_cannot_read_thread(client, admin_user, student_user):
@@ -70,7 +81,7 @@ _TEST_PNG = bytes.fromhex(
 
 def test_send_and_read_attachment(client, other_student_user):
     r = client.post(
-        f"/api/messages/{other_student_user['id']}/attachment",
+        f"/api/messages/{other_student_user['id']}:admin/attachment",
         headers=other_student_user["headers"],
         files={"file": ("foto.png", _TEST_PNG, "image/png")},
         data={"caption": "Mira esto"},
@@ -98,20 +109,35 @@ def test_send_attachment_rejects_bad_type(client, other_student_user):
 
 def test_delete_thread(client, admin_user, other_student_user):
     r = client.post(
-        f"/api/messages/{other_student_user['id']}",
+        f"/api/messages/{other_student_user['id']}:admin",
         headers=other_student_user["headers"],
         json={"text": "mensaje que se va a borrar"},
     )
     assert r.status_code == 201
-    assert len(client.get(f"/api/messages/{other_student_user['id']}", headers=admin_user["headers"]).json()) > 0
+    assert len(client.get(f"/api/messages/{other_student_user['id']}:admin", headers=admin_user["headers"]).json()) > 0
 
-    r = client.delete(f"/api/messages/{other_student_user['id']}", headers=admin_user["headers"])
+    r = client.delete(f"/api/messages/{other_student_user['id']}:admin", headers=admin_user["headers"])
     assert r.status_code == 200
 
-    assert client.get(f"/api/messages/{other_student_user['id']}", headers=admin_user["headers"]).json() == []
+    assert client.get(f"/api/messages/{other_student_user['id']}:admin", headers=admin_user["headers"]).json() == []
 
 
 def test_delete_thread_requires_authorization(client, profesor_user, other_student_user):
     # other_student_user no está asignado a profesor_user en este punto de la suite
     r = client.delete(f"/api/messages/{other_student_user['id']}", headers=profesor_user["headers"])
+    assert r.status_code == 403
+
+
+def test_profesor_cannot_access_student_admin_channel(client, admin_user, profesor_user, student_user):
+    """El canal de administración de un alumno es independiente del canal con su profesor,
+    incluso para EL MISMO profesor asignado -- ver ADMIN_CHANNEL_SUFFIX."""
+    client.patch(
+        f"/api/admin/students/{student_user['id']}",
+        headers=admin_user["headers"],
+        json={"assigned_profesor_id": profesor_user["id"]},
+    )
+    r = client.get(f"/api/messages/{student_user['id']}:admin", headers=profesor_user["headers"])
+    assert r.status_code == 403
+
+    r = client.post(f"/api/messages/{student_user['id']}:admin", headers=profesor_user["headers"], json={"text": "hola"})
     assert r.status_code == 403

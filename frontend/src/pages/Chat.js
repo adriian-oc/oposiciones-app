@@ -12,19 +12,27 @@ const attachmentUrl = (path) => `${API_BASE_URL}/uploads/${path}`;
 
 const ROLE_ICON = { student: '🎓', profesor: '🧑‍🏫', admin: '🛠️' };
 const ATTACHMENT_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,.doc,.docx,.xls,.xlsx,.txt';
+// Canal de administración de un alumno = su propio id + este sufijo (ver ADMIN_CHANNEL_SUFFIX
+// en backend/services/message_service.py) -- el alumno con su profesor y el alumno con
+// administración son dos conversaciones independientes, no una compartida.
+const ADMIN_CHANNEL_SUFFIX = ':admin';
 
 const Chat = () => {
   const { studentId: studentIdParam } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const hasSidebar = user.role === 'profesor' || user.role === 'admin';
+  // El alumno también tiene "sidebar", pero fijo (sus dos canales) y sin nueva
+  // conversación/borrar -- esas acciones solo tienen sentido con una lista dinámica de contactos.
+  const hasDynamicSidebar = user.role === 'profesor' || user.role === 'admin';
+  const hasSidebar = hasDynamicSidebar || user.role === 'student';
 
   const [threads, setThreads] = useState([]);
-  const [threadsLoaded, setThreadsLoaded] = useState(!hasSidebar);
-  // Alumno: siempre su propio hilo. Profesor sin hilo elegido: el suyo con administración
-  // (mismo hilo que antes abría "💬 Administración"). Admin sin hilo elegido: el más reciente
-  // de la lista, una vez cargada -- un admin no tiene hilo propio real que mostrar por defecto.
+  const [threadsLoaded, setThreadsLoaded] = useState(false);
+  // Alumno: siempre su propio hilo (canal profesor) si no se especifica otro. Profesor sin hilo
+  // elegido: el suyo con administración (mismo hilo que antes abría "💬 Administración"). Admin
+  // sin hilo elegido: el más reciente de la lista, una vez cargada -- un admin no tiene hilo
+  // propio real que mostrar por defecto.
   const activeStudentId =
     studentIdParam || (user.role !== 'admin' ? user.id : threads[0]?.student_id);
 
@@ -48,12 +56,11 @@ const Chat = () => {
   const [contactFilter, setContactFilter] = useState('');
 
   const loadThreads = useCallback(() => {
-    if (!hasSidebar) return;
     return messageService.listThreads()
       .then(setThreads)
       .catch((error) => console.error('Error loading threads:', error))
       .finally(() => setThreadsLoaded(true));
-  }, [hasSidebar]);
+  }, []);
 
   useEffect(() => {
     loadThreads();
@@ -151,15 +158,30 @@ const Chat = () => {
     }
   };
 
+  // Un admin siempre habla con un alumno por el canal de administración (nunca el canal
+  // profesor, que es privado entre el alumno y su profesor asignado) -- un profesor con sus
+  // alumnos, o cualquiera con un profesor (su hilo propio), usa la clave sin sufijo de siempre.
+  const threadKeyFor = (contact) =>
+    user.role === 'admin' && contact.role === 'student' ? `${contact.id}${ADMIN_CHANNEL_SUFFIX}` : contact.id;
+
   const existingThreadIds = new Set(threads.map((t) => t.student_id));
   const eligibleContacts = contacts.filter(
-    (c) => !existingThreadIds.has(c.id) && c.display_name.toLowerCase().includes(contactFilter.toLowerCase())
+    (c) => !existingThreadIds.has(threadKeyFor(c)) && c.display_name.toLowerCase().includes(contactFilter.toLowerCase())
   );
 
-  const goToContact = (id) => {
+  const goToContact = (contact) => {
     setShowNewConvo(false);
-    navigate(`/profesor/chat/${id}`);
+    navigate(`/profesor/chat/${threadKeyFor(contact)}`);
   };
+
+  // Barra fija del alumno: sus dos canales siempre visibles, aunque todavía no tengan mensajes
+  // (a diferencia de la lista dinámica de profesor/admin, que solo lista con quién ya se habló).
+  const studentChannels = user.role === 'student'
+    ? [
+        { student_id: user.id, display_name: 'Mi profesor', icon: '🧑‍🏫' },
+        { student_id: `${user.id}${ADMIN_CHANNEL_SUFFIX}`, display_name: 'Administración', icon: '🛠️' },
+      ].map((c) => ({ ...c, ...threads.find((t) => t.student_id === c.student_id) }))
+    : threads;
 
   return (
     <Layout>
@@ -168,23 +190,25 @@ const Chat = () => {
           <aside className="hidden md:flex w-64 flex-shrink-0 bg-white rounded-lg shadow-md flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <span className="font-semibold text-gray-900">Contactos</span>
-              <button
-                type="button"
-                onClick={openNewConversation}
-                title="Nueva conversación"
-                className="text-primary-600 hover:text-primary-800 text-lg leading-none"
-                data-testid="new-conversation-button"
-              >
-                ＋
-              </button>
+              {hasDynamicSidebar && (
+                <button
+                  type="button"
+                  onClick={openNewConversation}
+                  title="Nueva conversación"
+                  className="text-primary-600 hover:text-primary-800 text-lg leading-none"
+                  data-testid="new-conversation-button"
+                >
+                  ＋
+                </button>
+              )}
             </div>
             <div className="overflow-y-auto">
               {!threadsLoaded ? (
                 <p className="px-4 py-3 text-sm text-gray-500">Cargando...</p>
-              ) : threads.length === 0 ? (
+              ) : studentChannels.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-gray-500">Todavía no hay conversaciones.</p>
               ) : (
-                threads.map((t) => (
+                studentChannels.map((t) => (
                   <div
                     key={t.student_id}
                     className={`relative flex items-center gap-1 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${
@@ -196,15 +220,18 @@ const Chat = () => {
                       onClick={() => navigate(`/profesor/chat/${t.student_id}`)}
                       className="flex items-center gap-2 flex-1 min-w-0 px-4 py-3 text-left"
                     >
-                      <span className="text-lg flex-shrink-0">👤</span>
+                      <span className="text-lg flex-shrink-0">{t.icon || '👤'}</span>
                       <div className="min-w-0 flex-1">
                         <div className={`text-sm truncate ${t.unread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                           {t.display_name}
                         </div>
-                        <div className="text-xs text-gray-400 truncate">{t.last_message_text || '📎 Adjunto'}</div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {t.last_message_text || (t.last_message_at ? '📎 Adjunto' : 'Sin mensajes todavía')}
+                        </div>
                       </div>
                       {t.unread && <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />}
                     </button>
+                    {hasDynamicSidebar && (
                     <div className="relative flex-shrink-0 pr-2">
                       <button
                         type="button"
@@ -237,6 +264,7 @@ const Chat = () => {
                         </>
                       )}
                     </div>
+                    )}
                   </div>
                 ))
               )}
@@ -362,7 +390,7 @@ const Chat = () => {
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => goToContact(c.id)}
+                    onClick={() => goToContact(c)}
                     className="flex items-center gap-2 w-full text-left px-2 py-2 rounded-md hover:bg-gray-50"
                   >
                     <span>{ROLE_ICON[c.role] || '👤'}</span>

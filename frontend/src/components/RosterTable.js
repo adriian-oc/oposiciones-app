@@ -14,6 +14,7 @@ import Avatar from './Avatar';
 const RosterTable = ({
   users,
   profesores,
+  viewerRole,
   onRevoke,
   onReactivate,
   onEditContent,
@@ -105,6 +106,12 @@ const RosterTable = ({
     </div>
   );
 
+  // Un admin viendo el roster habla con un alumno por el canal de administración (nunca el
+  // canal con su profesor, que es una conversación aparte -- ver ADMIN_CHANNEL_SUFFIX en
+  // backend/services/message_service.py); un profesor viendo a sus propios alumnos (misma
+  // tabla reutilizada desde ProfesorDashboard) usa la clave sin sufijo de siempre.
+  const chatKeyFor = (u) => (viewerRole === 'admin' && u.role === 'student' ? `${u.id}:admin` : u.id);
+
   const actionsFor = (u, blocked) => (
     <div className="flex flex-wrap gap-2">
       {onViewProgress && (
@@ -119,7 +126,7 @@ const RosterTable = ({
       )}
       {(u.role === 'student' || u.role === 'profesor') && (
         <Link
-          to={`/profesor/chat/${u.id}`}
+          to={`/profesor/chat/${chatKeyFor(u)}`}
           className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200"
         >
           💬 Chat
