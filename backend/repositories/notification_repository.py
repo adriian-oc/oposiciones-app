@@ -20,6 +20,17 @@ class NotificationRepository:
             .to_list(length=None)
         )
 
+    async def get_recent(self, user_id: str, limit: int = 50) -> List[dict]:
+        """Últimas notificaciones sean o no leídas -- a diferencia de get_unread, para el panel
+        de comunicaciones a página completa y para rellenar el desplegable de la campanita hasta
+        4 elementos cuando hay menos de 4 sin leer (ver Layout.js)."""
+        return await (
+            self.collection.find({"user_id": user_id}, {"_id": 0})
+            .sort("created_at", -1)
+            .limit(limit)
+            .to_list(length=limit)
+        )
+
     async def mark_read(self, notification_id: str, user_id: str) -> None:
         await self.collection.update_one(
             {"id": notification_id, "user_id": user_id},

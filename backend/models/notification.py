@@ -20,3 +20,4 @@ class NotificationResponse(BaseModel):
     message: str
     link: str
     created_at: datetime
+    read_at: Optional[datetime] = None

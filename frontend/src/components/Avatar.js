@@ -4,7 +4,9 @@ import { avatarUrl } from '../utils/avatarUrl';
 const SIZES = { sm: 'h-8 w-8 text-xs', md: 'h-12 w-12 text-sm', lg: 'h-24 w-24 text-2xl' };
 
 // Foto de perfil si hay, si no un círculo con la inicial -- mismo componente para header,
-// roster y Mi Perfil, así el criterio de "quién tiene foto" no se repite en cada sitio.
+// roster y Mi Perfil, así el criterio de "quién tiene foto" no se repite en cada sitio. Un
+// admin sin foto propia todavía muestra el logo de la academia en vez de una inicial (sigue
+// pudiendo subir su propia foto para sustituirlo, como cualquier otro usuario).
 const Avatar = ({ user, size = 'sm', className = '' }) => {
   const url = avatarUrl(user);
   const sizeClass = SIZES[size] || SIZES.sm;
@@ -16,6 +18,16 @@ const Avatar = ({ user, size = 'sm', className = '' }) => {
         src={url}
         alt={user?.display_name || 'Avatar'}
         className={`${sizeClass} rounded-full object-cover flex-shrink-0 ${className}`}
+      />
+    );
+  }
+
+  if (user?.role === 'admin') {
+    return (
+      <img
+        src="/branding/logo.png"
+        alt={user?.display_name || 'ADOC'}
+        className={`${sizeClass} rounded-full object-contain bg-white p-0.5 border border-gray-100 flex-shrink-0 ${className}`}
       />
     );
   }

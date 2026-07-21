@@ -213,7 +213,12 @@ const Progress = () => {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        {isOther && <ViewingBanner label={viewedUser?.email || targetUserId} onExit={() => navigate('/admin')} />}
+        {isOther && (
+          <ViewingBanner
+            label={viewedUser?.email || targetUserId}
+            onExit={() => navigate(user?.role === 'profesor' ? '/profesor' : '/admin')}
+          />
+        )}
 
         <h1 className="text-2xl font-bold text-gray-900 mb-6">📊 Mi Progreso</h1>
 

@@ -6,15 +6,9 @@ import ConfirmDialog from './ConfirmDialog';
 import Avatar from './Avatar';
 import { messageService } from '../services/messageService';
 import { notificationService } from '../services/notificationService';
+import { NOTIF_ICONS } from '../config/notificationIcons';
 
 const UNREAD_POLL_MS = 30000;
-
-const NOTIF_ICONS = {
-  content_access: '📖',
-  document_pending: '📄',
-  access_request_pending: '📨',
-  content_update: '🆕',
-};
 
 const Layout = ({ children }) => {
   const { user, logout, switchAccount } = useAuth();
@@ -23,23 +17,28 @@ const Layout = ({ children }) => {
   const { guarded, setGuarded } = useExamGuard();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingNav, setPendingNav] = useState(null); // { to } | { logout: true } | null
-  const [unreadThreads, setUnreadThreads] = useState([]);
+  const [recentThreads, setRecentThreads] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
-  const hasUnread = unreadThreads.length > 0 || notifications.length > 0;
+  // Item ya visto en ESTA sesión de navegador -- quita el puntito rojo al instante al hacer
+  // click, sin esperar al próximo sondeo ni a que el servidor confirme la lectura (ver
+  // MessageService.get_thread, que marca como leído en cuanto se abre el hilo de verdad).
+  const [dismissedIds, setDismissedIds] = useState(() => new Set());
 
-  // Sondeo simple de hilos sin leer y notificaciones (acceso nuevo, documentos/solicitudes
-  // pendientes) -- se re-consulta al cambiar de página (para que se apague nada más leer el
-  // hilo, ver MessageService.get_thread que marca como leído) y cada 30s de fondo.
+  // Sondeo simple de hilos con conversación y notificaciones (acceso nuevo, documentos/
+  // solicitudes pendientes, novedades de contenido...) -- se re-consulta al cambiar de página y
+  // cada 30s de fondo. listThreads/getRecent traen TODO (no solo lo sin leer) para poder
+  // rellenar el desplegable hasta 4 elementos aunque no haya 4 sin leer, y para el panel de
+  // comunicaciones a página completa (ver Comunicaciones.js).
   useEffect(() => {
     if (!user || !['student', 'profesor', 'admin'].includes(user.role)) return;
     let cancelled = false;
     const checkUnread = () => {
-      messageService.getUnreadThreads()
-        .then((data) => { if (!cancelled) setUnreadThreads(data); })
+      messageService.listThreads()
+        .then((data) => { if (!cancelled) setRecentThreads(data); })
         .catch(() => {});
-      notificationService.getUnread()
+      notificationService.getRecent(20)
         .then((data) => { if (!cancelled) setNotifications(data); })
         .catch(() => {});
     };
@@ -55,21 +54,25 @@ const Layout = ({ children }) => {
   // ADMIN_CHANNEL_SUFFIX en message_service.py) -- vale igual para alumno, profesor y admin.
   const threadLink = (thread) => `/profesor/chat/${thread.student_id}`;
 
-  const handleNotificationClick = (notification) => {
-    notificationService.markRead(notification.id).catch(() => {});
-    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+  const dismiss = (key) => setDismissedIds((prev) => new Set(prev).add(key));
+
+  const handleItemClick = (item) => {
+    dismiss(item.key);
+    item.onSelect();
   };
 
-  // Une hilos sin leer y notificaciones en una sola lista para el desplegable de la campanita,
-  // ordenada por fecha -- lo más reciente arriba, sin importar de qué tipo sea.
-  const notifItems = [
-    ...unreadThreads.map((thread) => ({
+  // Une hilos y notificaciones en una sola lista, ordenada por fecha -- lo más reciente arriba,
+  // sin importar de qué tipo sea. "unread" aquí es el estado real del servidor; isUnseen además
+  // descuenta lo que el usuario ya hizo click en esta sesión (dismissedIds).
+  const allItems = [
+    ...recentThreads.map((thread) => ({
       key: `msg-${thread.student_id}`,
       icon: '💬',
       label: thread.display_name,
-      sublabel: 'Mensaje nuevo',
+      sublabel: thread.last_message_text || '📎 Adjunto',
       link: threadLink(thread),
       at: thread.last_message_at,
+      unread: thread.unread,
       onSelect: () => {},
     })),
     ...notifications.map((n) => ({
@@ -79,9 +82,17 @@ const Layout = ({ children }) => {
       sublabel: n.message,
       link: n.link,
       at: n.created_at,
-      onSelect: () => handleNotificationClick(n),
+      unread: !n.read_at,
+      onSelect: () => notificationService.markRead(n.id).catch(() => {}),
     })),
   ].sort((a, b) => new Date(b.at) - new Date(a.at));
+
+  const isUnseen = (item) => item.unread && !dismissedIds.has(item.key);
+  const unseenItems = allItems.filter(isUnseen);
+  // Desplegable compacto: primero lo no visto, y si no llega a 4, se rellena con lo más
+  // reciente ya visto -- nunca más de 4 en la vista (el resto vive en el panel a página completa).
+  const notifItems = [...unseenItems, ...allItems.filter((i) => !isUnseen(i))].slice(0, 4);
+  const hasUnread = unseenItems.length > 0;
 
   const handleLogout = async () => {
     await logout();
@@ -213,29 +224,44 @@ const Layout = ({ children }) => {
                       aria-label="Cerrar notificaciones"
                       onClick={() => setNotifOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto" data-testid="notifications-dropdown">
-                      {notifItems.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
-                      ) : (
-                        notifItems.map((item) => (
-                          <Link
-                            key={item.key}
-                            to={item.link}
-                            onClick={(e) => {
-                              setNotifOpen(false);
-                              item.onSelect();
-                              guardedNavigate(e, item.link);
-                            }}
-                            className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                          >
-                            <span className="flex-shrink-0">{item.icon}</span>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
-                              <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
-                            </div>
-                          </Link>
-                        ))
-                      )}
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg border border-gray-200 z-50" data-testid="notifications-dropdown">
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifItems.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
+                        ) : (
+                          notifItems.map((item) => (
+                            <Link
+                              key={item.key}
+                              to={item.link}
+                              onClick={(e) => {
+                                setNotifOpen(false);
+                                handleItemClick(item);
+                                guardedNavigate(e, item.link);
+                              }}
+                              className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <span className="flex-shrink-0">{item.icon}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
+                                <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
+                              </div>
+                              {isUnseen(item) && (
+                                <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" data-testid="item-unseen-dot" />
+                              )}
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                      <Link
+                        to="/comunicaciones"
+                        onClick={(e) => {
+                          setNotifOpen(false);
+                          guardedNavigate(e, '/comunicaciones');
+                        }}
+                        className="block text-center px-4 py-2.5 text-sm font-medium text-primary-600 hover:bg-gray-50 border-t border-gray-200"
+                      >
+                        Abrir panel de comunicaciones
+                      </Link>
                     </div>
                   </>
                 )}
@@ -285,30 +311,46 @@ const Layout = ({ children }) => {
                       aria-label="Cerrar notificaciones"
                       onClick={() => setNotifOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                      {notifItems.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
-                      ) : (
-                        notifItems.map((item) => (
-                          <Link
-                            key={item.key}
-                            to={item.link}
-                            onClick={(e) => {
-                              setNotifOpen(false);
-                              setMobileMenuOpen(false);
-                              item.onSelect();
-                              guardedNavigate(e, item.link);
-                            }}
-                            className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                          >
-                            <span className="flex-shrink-0">{item.icon}</span>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
-                              <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
-                            </div>
-                          </Link>
-                        ))
-                      )}
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifItems.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-gray-500">No hay notificaciones nuevas.</p>
+                        ) : (
+                          notifItems.map((item) => (
+                            <Link
+                              key={item.key}
+                              to={item.link}
+                              onClick={(e) => {
+                                setNotifOpen(false);
+                                setMobileMenuOpen(false);
+                                handleItemClick(item);
+                                guardedNavigate(e, item.link);
+                              }}
+                              className="flex gap-2 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <span className="flex-shrink-0">{item.icon}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-gray-900 truncate">{item.label}</div>
+                                <div className="text-xs text-gray-500 truncate">{item.sublabel}</div>
+                              </div>
+                              {isUnseen(item) && (
+                                <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" />
+                              )}
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                      <Link
+                        to="/comunicaciones"
+                        onClick={(e) => {
+                          setNotifOpen(false);
+                          setMobileMenuOpen(false);
+                          guardedNavigate(e, '/comunicaciones');
+                        }}
+                        className="block text-center px-4 py-2.5 text-sm font-medium text-primary-600 hover:bg-gray-50 border-t border-gray-200"
+                      >
+                        Abrir panel de comunicaciones
+                      </Link>
                     </div>
                   </>
                 )}

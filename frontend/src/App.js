@@ -17,6 +17,7 @@ import AttemptProgress from './pages/AttemptProgress';
 import Analytics from './pages/Analytics';
 import ProfesorDashboard from './pages/ProfesorDashboard';
 import Chat from './pages/Chat';
+import Comunicaciones from './pages/Comunicaciones';
 import AccessRequest from './pages/AccessRequest';
 import TeacherApplication from './pages/TeacherApplication';
 import ResetPassword from './pages/ResetPassword';
@@ -146,6 +147,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute allowedRoles={['student', 'profesor', 'admin']}>
             <Chat />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/comunicaciones"
+        element={
+          <PrivateRoute allowedRoles={['student', 'profesor', 'admin']}>
+            <Comunicaciones />
           </PrivateRoute>
         }
       />

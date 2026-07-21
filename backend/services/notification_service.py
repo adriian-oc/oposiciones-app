@@ -36,5 +36,8 @@ class NotificationService:
     async def get_unread(self, user_id: str) -> list:
         return await self.repo.get_unread(user_id)
 
+    async def get_recent(self, user_id: str, limit: int = 50) -> list:
+        return await self.repo.get_recent(user_id, limit)
+
     async def mark_read(self, notification_id: str, user_id: str) -> None:
         await self.repo.mark_read(notification_id, user_id)

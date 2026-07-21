@@ -121,7 +121,12 @@ const StudyCalendar = () => {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto space-y-6">
-        {isOther && <ViewingBanner label={viewedUser?.email || targetUserId} onExit={() => navigate('/admin')} />}
+        {isOther && (
+          <ViewingBanner
+            label={viewedUser?.email || targetUserId}
+            onExit={() => navigate(user?.role === 'profesor' ? '/profesor' : '/admin')}
+          />
+        )}
 
         <div>
           <h1 className="text-2xl font-bold text-gray-900">📅 Calendario de Estudio</h1>
