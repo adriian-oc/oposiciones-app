@@ -66,6 +66,10 @@ const Admin = () => {
   const [accessRequests, setAccessRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [convertingRequest, setConvertingRequest] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteError, setInviteError] = useState('');
 
   // Documentos PDF de profesor pendientes de aprobación (ronda 5)
   const [pendingDocs, setPendingDocs] = useState([]);
@@ -172,6 +176,22 @@ const Admin = () => {
     const link = `${window.location.origin}/solicitar-acceso`;
     navigator.clipboard.writeText(link);
     alert('Enlace copiado:\n' + link);
+  };
+
+  const handleSendInvite = async (e) => {
+    e.preventDefault();
+    setInviteError('');
+    setInviteSending(true);
+    try {
+      await adminService.sendRecruitmentEmail(inviteEmail.trim());
+      setShowInviteModal(false);
+      setInviteEmail('');
+      alert(`Correo de captación enviado a ${inviteEmail.trim()}.`);
+    } catch (error) {
+      setInviteError(error.response?.data?.detail || 'No se pudo enviar el correo');
+    } finally {
+      setInviteSending(false);
+    }
   };
 
   const handleDismissRequest = async (req) => {
@@ -489,12 +509,20 @@ const Admin = () => {
           <div className="bg-white rounded-lg shadow p-6" data-testid="requests-section">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Solicitudes de Acceso</h2>
-              <button
-                onClick={handleCopyRegistrationLink}
-                className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-              >
-                🔗 Copiar enlace
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopyRegistrationLink}
+                  className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                >
+                  🔗 Copiar enlace
+                </button>
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded hover:bg-primary-700"
+                >
+                  ✉️ Invitar por email
+                </button>
+              </div>
             </div>
             {requestsLoading ? (
               <p className="text-center text-gray-500">Cargando...</p>
@@ -757,6 +785,45 @@ const Admin = () => {
           onClose={() => setConvertingRequest(null)}
           onSave={handleConvertSave}
         />
+      )}
+
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Invitar por email</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Le mandamos el correo de captación con el enlace para solicitar acceso.
+            </p>
+            <form onSubmit={handleSendInvite} className="space-y-4">
+              <input
+                autoFocus
+                required
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="persona@email.com"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+              {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowInviteModal(false); setInviteError(''); }}
+                  className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviteSending}
+                  className="flex-1 py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {inviteSending ? 'Enviando...' : 'Enviar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {expiryEditingUser && (

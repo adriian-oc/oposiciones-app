@@ -184,3 +184,26 @@ class EmailService:
         {self._button(app_link, "Entrar a ADOC")}
         """
         self.send(to_email, to_name, subject, self._layout(body))
+
+    def send_recruitment_email(self, to_email: str, signup_link: str) -> None:
+        """Correo de captación -- el admin lo manda a mano a un email suelto (p.ej. alguien que
+        preguntó por WhatsApp o en persona) desde Solicitudes → Invitar por email. No hay cuenta
+        creada todavía, por eso no hay to_name real: se saluda genérico."""
+        subject = "¿Preparando tu oposición? Te ayudamos a conseguirlo — ADOC"
+        body = f"""
+        <p>¡Hola!</p>
+        <p>Si nos has encontrado es porque quieres aprobar tu oposición, y estamos aquí para
+        ayudarte a conseguirlo.</p>
+        <p>Te damos acceso a una muestra de cómo trabajamos en ADOC: cuadernillos de ejercicios
+        por tema, supuestos prácticos, test de Teoría, un calendario de estudio personalizado y
+        seguimiento constante de tu progreso -- todo en un mismo sitio, pensado para que sepas en
+        cada momento qué te toca estudiar y cómo vas.</p>
+        <p>Detrás de ADOC hay dos profesores implicados de verdad en tu preparación: una
+        compañera <strong>A1 del INSS</strong>, y un compañero que ha sacado su
+        <strong>C2 este mismo año</strong> -- sabe exactamente por lo que estás pasando porque lo
+        acaba de vivir. Los dos te vamos a acompañar en todo el proceso: corrigiendo tus
+        supuestos, resolviendo tus dudas por chat, y ajustando tu plan de estudio según cómo
+        vayas avanzando.</p>
+        {self._button(signup_link, "Pide tu acceso")}
+        """
+        self.send(to_email, to_email, subject, self._layout(body))

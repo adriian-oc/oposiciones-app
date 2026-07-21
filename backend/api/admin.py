@@ -1,15 +1,21 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from pydantic import BaseModel, EmailStr
 from typing import List
 
 import requests
 
+from config.settings import settings
 from models.user import UserCreate, UserResponse, UserUpdate
 from services.admin_service import AdminService
 from services.avatar_service import AvatarService
 from services.email_service import EmailService
 from middleware.auth import require_role
+
+
+class RecruitmentEmailRequest(BaseModel):
+    email: EmailStr
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +139,19 @@ async def get_email_activity(current_user: dict = Depends(require_role(["admin"]
         }
         for e in events
     ]
+
+
+@router.post("/send-recruitment-email")
+async def send_recruitment_email(
+    data: RecruitmentEmailRequest,
+    current_user: dict = Depends(require_role(["admin"])),
+):
+    """Correo de captación a un email suelto que todavía no tiene cuenta (p.ej. alguien que
+    preguntó por WhatsApp o en persona) -- ver EmailService.send_recruitment_email. No crea
+    ningún registro en Mongo, solo manda el correo con el enlace a /solicitar-acceso."""
+    signup_link = f"{settings.frontend_base_url}/solicitar-acceso"
+    EmailService().send_recruitment_email(data.email, signup_link)
+    return {"message": "ok"}
 
 
 @router.post("/students/migration-announcement")

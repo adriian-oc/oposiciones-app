@@ -46,6 +46,11 @@ export const adminService = {
     return response.data;
   },
 
+  async sendRecruitmentEmail(email) {
+    const response = await api.post('/api/admin/send-recruitment-email', { email });
+    return response.data;
+  },
+
   async uploadAvatar(userId, file) {
     const formData = new FormData();
     formData.append('file', file);
