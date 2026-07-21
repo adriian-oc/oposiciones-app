@@ -4,228 +4,60 @@ Pega esto como primer mensaje en una conversación nueva de Claude Code para ret
 
 ---
 
-## Contexto del proyecto
+Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo: `/Users/adrian/Desktop/Adoc/oposiciones-app` (React CRA + FastAPI + MongoDB). Producción: backend en Render (`https://pagina-final-mhnt.onrender.com`, plan free, se duerme tras inactividad), frontend en Vercel (`https://adoc-oposiciones.vercel.app`), Mongo en Atlas. Remotos git: `origin` (github.com/adriian-oc/oposiciones-app) y `pagina-final` (github.com/adriian-oc/Pagina-final) — pushear a los dos sin pedir permiso cada vez (pero confirmar siempre antes de un deploy real a producción).
 
-ADOC es una plataforma de preparación de oposiciones: banco de preguntas por tema, supuestos
-prácticos, Test de Teoría, seguimiento de progreso, calendario de repaso, chat, mensajería,
-notificaciones y panel de administración. Stack: **React (CRA) + FastAPI + MongoDB** (capas
-api → services → repositories → Mongo), **autenticación propia** (JWT + bcrypt).
+## Pendiente — por prioridad
 
-- **Repo de trabajo local**: `/Users/adrian/Desktop/Adoc/oposiciones-app`
-- **Repos remotos**: `pagina-final` (`https://github.com/adriian-oc/Pagina-final.git`) y
-  `origin` (`https://github.com/adriian-oc/oposiciones-app.git`) son **mirrors idénticos** —
-  pushear siempre a los dos. Instrucción permanente del usuario: subir cada cambio sin pedir
-  confirmación cada vez, salvo la regla dura de abajo.
-- **Regla dura, sin excepciones**: nunca escribir contraseñas/credenciales reales de personas o
-  cuentas de producción en ningún archivo del repo, aunque haya permiso permanente para pushear.
-  Ya hubo un incidente de seguridad real por esto (documentado más abajo) — no repetirlo.
-- **Producción**: backend en Render (`https://pagina-final-mhnt.onrender.com`, plan free, se
-  duerme tras inactividad), frontend en Vercel (`https://adoc-oposiciones.vercel.app`), Mongo en
-  Atlas (cluster `Academia`, db `opositores_db`). Envío de email transaccional con **Brevo**
-  (plan free, remitente verificado `oposicionesadoc@gmail.com`, cuenta de administración de la
-  academia — nunca usar la cuenta personal de Adrián como remitente).
-- **El negocio real ya usa esta app en producción** (no un proyecto de pruebas) — hay alumnos
-  reales con cuentas reales. Cualquier acción que envíe correos o mensajes a esas cuentas es una
-  acción real con efecto real: pedir confirmación antes de acciones masivas o irreversibles.
+1. **[MÁXIMA PRIORIDAD, EN CURSO] Corregir respuestas erróneas del Test de Teoría parte general (Temas 1-11).** Los alumnos reportan notas mal calculadas; el profesor revisó el Tema 9 a mano y encontró ~12 errores. Los PDF oficiales (preguntas + tabla de respuestas al final) están en `/Users/adrian/Desktop/OPO/OPO 2/Test/GM/2. Parte general Test Vanesa año 1 tema 1 al 11/` (un PDF por tema, más `Test Adrián 1-11.pdf` que parece ser una versión consolidada). Se lanzaron 10 agentes en paralelo comparando cada PDF contra la base de datos real (colección `questions`, `part=GENERAL`, un `theme_id` por tema — ver `backend/services` para el modelo).
 
-Antes de nada: `git log --oneline -30` para ver el estado exacto (hay muchísimos commits de
-sesiones recientes: permisos de perfil por rol, calendario de estudio editable por
-admin/profesor, sistema de notificaciones con campanita, Modo Foco/Pomodoro, cambio rápido de
-cuenta admin↔profesor sin re-login, chat admin↔profesor además de admin/profesor↔alumno, cambio
-de remitente de email, cada correo automático registrado también como mensaje dentro de la app,
-progresión fija del calendario por temario, rediseño de Chat con barra de contactos, foto de
-perfil, correos con plantilla visual común, actividad de email de Brevo en Admin, cambio de rol
-de usuarios existentes, alumnos "propios" de un profesor con su propia pestaña de administración
-(ambas rondas del 2026-07-20), e insignia NEW + aviso de novedad de temario por email/in-app
-(2026-07-21) — ver detalle de la última ronda más abajo).
+   **HALLAZGO GRAVE confirmado en Tema 6: 33 de 46 preguntas (72%) tienen la respuesta correcta desplazada exactamente un índice** (patrón sistemático de tipo off-by-one, no errores puntuales) — verificado además contra el contenido constitucional real. Esto sugiere un fallo de carga/migración de toda esta tanda de temas, no errores manuales aislados.
 
-## Flujo permanente: cómo avisar de una novedad de temario
+   Pasos: (a) revisar los informes del resto de temas — si esta sesión es continuación de la misma sesión que lanzó los agentes, están en `/private/tmp/claude-501/-Users-adrian-Desktop-WEB/886c5389-3d1b-4b4a-8e9b-3400975caae4/scratchpad/qa_review/report_tema_*.md`; si es una sesión nueva esa ruta de scratchpad ya no existe y hay que repetir el proceso (exportar `questions` de cada tema GENERAL 1-11 a JSON y volver a comparar contra los PDF, idealmente delegando en agentes en paralelo por tema para no reventar el contexto); (b) si el patrón off-by-one se repite en otros temas, escribir un script de corrección genérico (detectar y corregir el desplazamiento) en vez de editar pregunta por pregunta a mano; (c) aplicar las correcciones primero en Mongo local (`opositores_dev`, ya tiene una copia realista de las preguntas) y verificar, luego dar al usuario el script exacto para correrlo él mismo contra producción (igual que el seed de draft-questions — Claude no debe tener ni pedir credenciales de Mongo de producción); (d) una vez corregidas las preguntas, mirar el punto 4 (recalcular estadísticas de alumnos afectados).
 
-Instrucción del usuario (2026-07-21, para aplicar siempre a partir de ahora, no solo esta vez):
-cada vez que se actualice el temario (nueva ley, reforma, sentencia relevante...), seguir este
-mismo proceso, reutilizando la tarjeta de Admin en vez de improvisar uno nuevo cada ronda:
+2. **Sembrar las 20 preguntas de draft_questions en producción.** El código ya está desplegado (confirmado por curl: `/api/draft-questions` responde en Render, y el bundle de Vercel ya incluye el componente `DraftQuestionsBank`). Falta solo que el usuario ejecute, con su `.env` de producción:
+   ```
+   cd backend && source venv/bin/activate && python ../scripts/seed_draft_questions_novedad.py
+   ```
+   Después: Admin (o panel del profesor) → Novedad de temario → Preguntas sin lanzar → publicar como Cuadernillo o Supuesto.
 
-1. **Verificar contra el BOE** antes de dar nada por bueno — una captura de Instagram/red social
-   puede llevar el número de BOE equivocado o mezclar dos normas; confirmar con `WebFetch`/
-   `WebSearch` sobre boe.es (o el buscador `https://www.boe.es/buscar/doc.php?id=<ref>`) el título
-   exacto, qué artículos toca y la fecha de entrada en vigor antes de tocar ningún PDF.
-2. **Identificar el tema afectado** en `scripts/data/themes_seed.json` (código `SPECIFIC_N` /
-   `GENERAL_N`) y su PDF en `frontend/public/temario/<area>_<tema_key>.pdf`.
-3. **Insertar una página de "novedad" nueva como página 1** del PDF (reportlab + pypdf, sin tocar
-   el resto del documento), respetando el estilo visual ya existente en esos PDF: título en
-   `#1F3864`, texto de novedad en rojo `#8B0000`, caja de cabecera en `#34437C`, fondo de caja
-   clara `#EBF2FF`, fuente Helvetica (equivalente a Liberation Sans, la fuente real incrustada).
-   Sobrescribir el PDF en `frontend/public/temario/` (nunca tocar `frontend/build/`, que está en
-   `.gitignore` y se regenera solo).
-4. **Marcar `is_new: true`** en el `content_unit` correspondiente
-   (`backend/models/content_unit.py` campo `is_new`,
-   `ContentUnitRepository.set_is_new(area_id, theme_id, True)`) — es lo que pinta la insignia
-   **NEW** junto al tema en `frontend/src/pages/Cuadernos.js`.
-5. **Avisar a alumnos y profesores** desde la tarjeta **"📣 Novedad de temario"** del panel de
-   Admin (`frontend/src/pages/Admin.js`, tab `content-update`) → botón "Enviar aviso de novedad".
-   Dispara `POST /api/admin/content-updates/temario-novedad-2026` →
-   `AdminService.send_content_update_announcement()`, que marca el/los `content_unit` como NEW,
-   notifica in-app (`NotificationService.notify_bulk(["student","profesor"], ...)`, tipo
-   `content_update`, icono 🆕 en `Layout.js`) y manda un email real vía Brevo
-   (`EmailService.send_content_update_email`) a todos los alumnos y profesores activos (no
-   revocados), invitándoles a entrar a ADOC. Como es un envío real e irreversible a cuentas
-   reales, quien pulsa el botón tiene que ser el propio Adrián con su sesión de admin — Claude no
-   debe iniciar sesión en producción ni manejar su contraseña bajo ningún concepto; si hace falta
-   marcar el NEW o mandar el aviso desde una sesión de Claude, hacerlo contra la base de datos
-   *local* de desarrollo para verificar, y pedirle a él que dé al botón en producción.
+3. **Historial: reanudar/borrar test a medias (alumno) + ver/borrar test de alumno (profesor).** El alumno debe poder retomar un test en curso o borrarlo, y ver sus test ya completados para repasar fallos. El profesor debe poder ver las respuestas concretas de un alumno en un test, o borrarlo. Revisar `frontend/src/pages/Progress.js` (o donde esté el Historial) y el modelo de `attempts`/`exams` en Mongo.
 
-**Importante para la próxima vez**: ahora mismo `send_content_update_announcement()` y el asunto/
-cuerpo del email están **hardcodeados** a la novedad del Tema 4 (convenio especial de cotización
-por prácticas) y el Tema 12 (reforma IMV Ley 1/2026) de julio 2026 — antes de la siguiente
-novedad, generalizar el endpoint para que acepte una lista de `(theme_code, mensaje)` y el texto
-del email en vez de estar fijado a estos dos temas concretos.
+4. **Recalcular estadísticas de alumnos al corregir una pregunta.** Cuando se edita `correct_answer` de una pregunta (vía Admin, o por las correcciones del punto 1), repasar los `attempts`/`progress` de alumnos que ya respondieron esa pregunta: si su respuesta coincide con la NUEVA respuesta correcta pero estaba contabilizada como fallo, corregir su estadística.
 
-## Cerrado — importar progreso de alumnos de "la página antigua"
+5. **Eliminar todos los emojis y usar imágenes de un banco gratuito.** Sustituir los emoji usados como iconos en toda la app (Admin.js, Layout.js, ProfesorDashboard.js, `config/notificationIcons.js`, etc.) por imágenes/iconos SVG de una web de recursos gratuitos para uso web, manteniendo el significado de cada uno.
 
-Investigado a fondo tres veces. Los dos primeros intentos no encontraron nada real: (1)
-`ADOC_Cuadernos_Online.html` en el escritorio del usuario es una app 100% cliente que guarda
-todo en el `localStorage` del navegador de cada alumno — no hay servidor, no hay nada que
-importar de ahí. (2) El repo de GitHub que se señaló primero como "la página antigua"
-(`origin`) es literalmente el mismo código de este proyecto, sin volcado de datos. (3) La
-página antigua real resultó ser otra: `github.com/adriian-oc/adoc-webapp` (código local en
-`/Users/adrian/Desktop/Adoc/webapp`), una app Firebase (Auth + Firestore, proyecto `adoc-9e397`,
-desplegada en `adoc-9e397.web.app`/`academia-adoc.web.app`) con progreso real de alumnos en
-`progress/{uid}` de Firestore — esta sí era una fuente real. El usuario decidió (2026-07-20) no
-migrarla: se cierra el tema definitivamente, no hace falta volver a investigarlo.
+6. **Admin — Novedad de temario: estado de envío.** Si ya se mandó la comunicación de una novedad, mostrar "Ya enviado" a la derecha de la tarjeta, cambiar el botón a "Reenviar" o "Enviar solo a los que no han abierto", y mostrar un contador X/Y vistos sobre el total de destinatarios. Necesita registrar qué novedades se mandaron y a quién, cruzado con los eventos de apertura de Brevo (`EmailService.get_recent_activity`, evento `opened`).
 
-## Hecho en la ronda del 2026-07-20 (los 5 pedidos de la ronda anterior)
+7. **Rediseñar inicio de profesor con tarjetas, unificando Inicio y Mis alumnos.** Usar el sistema de tarjetas ya existente en Admin.js como referencia visual para `ProfesorDashboard.js`, fusionando la pestaña de inicio con la de alumnos en una vista más elegante. Mejorar también la vista de inicio del alumno.
 
-Los 5 puntos de abajo estaban "sin empezar" y ya están implementados, verificados
-(pytest + eslint + build + navegador con Browser pane) y pusheados a los dos remotos.
+8. **Rediseñar el calendario de estudio: vista mensual real + planificación trimestral.** El calendario de alumnos debe mostrarse como un calendario real por meses, con planificación trimestral. Algoritmo pedido explícitamente por el usuario:
+   - Lunes: Tema 1 parte específica + Test de Teoría Tema 1.
+   - Martes: Tema 2 parte específica + Test de Teoría Tema 2 + Cuadernillo Tema 2.
+   - Miércoles: Tema 3 parte específica + Test de Teoría Tema 3 + Cuadernillo Tema 3.
+   - ...así con todos los temas de la parte específica.
+   - Después, la misma lógica con los temas de la parte general (Test de Teoría + Cuadernillo por tema).
+   Una vez generada la planificación trimestral, el profesor la **acepta** y a partir de ahí puede **modificar eventos individuales**. Revisar `backend/services/study_calendar_service.py` (ya tiene `_build_new_queue` de una ronda anterior) y `frontend/src/pages/StudyCalendar.js`.
 
-### 1. Algoritmo de generación del calendario de estudio — hecho
+9. **Almacenamiento persistente (Backblaze B2) — pendiente de credenciales.** Código ya migrado de Cloudflare R2 (pedía tarjeta) a Backblaze B2 (no la pide) — ver `backend/services/storage_service.py`, `backend/config/settings.py` (`b2_key_id`, `b2_application_key`, `b2_bucket_name`, `b2_endpoint`, `b2_public_url`), `backend/.env.example`. Falta que el usuario cree la cuenta/bucket/application key en Backblaze y pase las 4 credenciales (keyID, applicationKey, nombre del bucket, endpoint tipo `s3.us-west-004.backblazeb2.com`).
 
-`backend/services/study_calendar_service.py::_build_new_queue` (reescrito por completo,
-`_build_priority_queue` y el 65/35 con el repaso SM-2 no se tocaron). Conteos reales de temas
-(no los 13/13 que se asumía al principio): **15 temas específicos, 23 generales** (bloque 1 =
-primeros 13, bloque resto = los otros 10), leídos siempre en vivo de `themes`, nunca hardcodeados.
+10. **Fallback de envío manual de correo si Brevo falla.** Si el envío automático no resulta fiable, mostrar un modal con el asunto/cuerpo literal del correo para que el profesor/admin lo copie (botón de copiar al portapapeles) y lo mande a mano.
 
-Decisiones que tomó el usuario al aclarar (por si hace falta revisarlas):
-- Lectura comprensiva inicial (una sola vez, `kind="reading"`, sin `content_unit_key`, no se
-  repite nunca — estado persistido vía `StudyCalendarRepository.get_completed_reading_theme_ids`):
-  cubre los 15 específicos + el bloque 1 de 13 generales (28 temas). El resto de generales
-  (14–23) NO tienen día de lectura dedicado, entran directo en la rotación de práctica.
-- Supuestos sueltos (sin `theme_id`, banco `Supuesto N`): se reparten en round-robin dentro de
-  la rotación, uno por cada tema del día (spec = cuadernillo+supuesto, general = Test de
-  Teoría+supuesto) — no hace falta lógica de "horas sobrantes" aparte porque el sistema de
-  bloques de 45 min ya avanza varios elementos el mismo día si hay horas de sobra.
-- Ciclo que se repite para siempre tras la lectura: específicos → generales bloque 1 → 2ª vuelta
-  específicos → resto generales → vuelta a empezar (lo gestiona `itertools.cycle()` en
-  `regenerate_calendar`, la lista que devuelve `_build_new_queue` ya no lleva la lectura dentro
-  para que no se repita al dar la vuelta).
+11. **Curador dual-rol.** Al seleccionar rol "profesor" en el alta/edición de usuario, poder marcar también "es curador" (`is_curator: bool` en `User`). Crear `require_content_editor()` en `middleware/auth.py` (admin/curator O profesor con `is_curator`), sustituir los ~11 usos de `require_role(["admin","curator"])` en `api/questions.py` y `api/practical_sets.py`. Avisar a los admins cuando un profesor/curador modifique contenido.
 
-De paso se arregló un bug ya existente que afectaba directamente a esta función: el botón
-"Practicar" del calendario (`frontend/src/pages/StudyCalendar.js::handleStartPractice`) llamaba
-siempre a `startPractice` (solo vale para practical_sets), y con `content_unit_key` tipo
-`ttgen:<theme_id>` (Test de Teoría) fallaba — ahora bifurca igual que `Cuadernos.js`.
+## Ya hecho recientemente (no repetir)
 
-### 2. Rediseño de Chat — hecho
+- Canales de chat separados profesor/admin (sufijo `:admin`), nueva conversación, borrar conversación, adjuntos en chat.
+- `student_type` propio/centro, RosterTable reutilizable, cambio de rol de usuario existente.
+- Panel de actividad de email (Brevo) en Admin — actividad reciente + estadísticas agregadas (últimos 7 días).
+- Foto de perfil (autoservicio + admin), logo ADOC como foto por defecto de admin.
+- Notificaciones: campanita rediseñada (no leídas arriba, punto rojo, tope 4 + panel completo `/comunicaciones`).
+- Icono de la app al añadir a pantalla de inicio (manifest.json, apple-touch-icon).
+- Banco de "Preguntas sin lanzar" (`draft_questions`) para publicar tras una novedad de temario, como Cuadernillo o Supuesto nuevo — código desplegado, falta sembrar en producción (punto 2).
+- Corregido bug "Acceso Denegado" al volver de vista de análisis de alumno (profesor).
 
-- Header con "Chat con {nombre}" vía `GET /api/messages/{id}/counterpart`
-  (`MessageService._counterpart` — alumno ve a su profesor asignado, profesor en su propio hilo
-  ve "Administración", admin ve el nombre real del alumno/profesor).
-- Barra de contactos para profesor/admin vía `GET /api/messages/threads`
-  (`MessageService.list_threads`, solo hilos con al menos un mensaje).
-- Pestaña "💬 Chat" fija en el nav para alumno/profesor/admin, todas apuntan a `/chat`
-  (`frontend/src/pages/Chat.js` decide el hilo activo según rol: alumno siempre el suyo,
-  profesor por defecto el de administración, admin el más reciente de la lista si no hay
-  parámetro en la URL). Ruta `/chat` ahora abierta a los 3 roles en `App.js` (antes solo
-  `student`); `/profesor/chat/:studentId` se mantiene para deep-links (roster, campanita).
+## Notas de proceso importantes
 
-### 3. Foto de perfil — hecho
-
-`backend/services/avatar_service.py` (mismo patrón de disco local que los PDFs de profesor, con
-el mismo aviso de que no es solución definitiva para producción real). Endpoints
-`POST /api/auth/me/avatar` (autoservicio) y `POST /api/admin/students/{id}/avatar` (admin).
-Componente `frontend/src/components/Avatar.js` (foto o inicial de respaldo) reutilizado en
-header (`Layout.js`), roster (`RosterTable.js`), `MiPerfil.js` y `ProfileEditorModal` en `Admin.js`.
-
-### 4. Mejorar los correos automáticos — hecho
-
-`backend/services/email_service.py`: envoltorio visual común `_layout`/`_button` (logo real vía
-`frontend_base_url` + `<meta charset="utf-8">`, sin el charset las tildes llegaban mal) usado por
-los 4 correos. Bienvenida reescrita explicando qué hay dentro de ADOC. El aviso agrupado de
-mensajes (`send_new_message_notice`) ahora incluye el texto real de cada mensaje
-(`html.escape` sobre nombre y texto, viene de un alumno/profesor) en vez de solo el aviso genérico.
-
-### 5. Actividad de Email de Brevo en Admin — hecho
-
-`GET /api/admin/email-activity` (admin-only, `backend/api/admin.py`) llama a
-`EmailService.get_recent_activity` (API de eventos de Brevo, mismo `BREVO_API_KEY`, la llamada
-vive siempre en el backend). Nueva tarjeta "Actividad de Email" en `Admin.js` con tabla
-Estado/Fecha/Asunto/Remitente/Destinatario. Sin `BREVO_API_KEY` en local (como el resto de
-envío) devuelve `[]` y la tarjeta muestra "Todavía no hay actividad registrada" — no se ha podido
-verificar con datos reales de Brevo en esta ronda, solo el estado vacío.
-
-## Hecho en la ronda del 2026-07-20 (parte 2) — roles y alumnos propios de profesor
-
-Pedido del usuario: (1) el admin tiene que poder cambiar el rol de un usuario YA creado, no solo
-al darlo de alta; (2) los profesores tienen que poder tener "alumnos propios" (clientela privada,
-con poder de gestión real) además de "alumnos del centro" (los de siempre, solo seguimiento), y
-el admin tiene que ver por profesor cuántos alumnos tiene en total/propios/del centro. Aclarado
-con el usuario antes de implementar (respuestas elegidas, todas la opción recomendada):
-- Un alumno propio le da al profesor **todo salvo cuenta/rol**: acceso a contenido, pagos,
-  fecha de expiración, restablecer contraseña, revocar/reactivar — igual que el admin, pero sin
-  poder crear la cuenta ni cambiar el rol de nadie.
-- Solo el admin marca a un alumno como propio/centro (el profesor nunca crea ni reasigna).
-- Un admin no puede cambiar su propio rol desde el control (sí el de cualquier otro usuario).
-
-Implementado y verificado (pytest + eslint + build + navegador con los tres roles):
-- `backend/models/user.py`: nuevo `student_type` ("propio" | "centro" | None) en `UserInDB`/
-  `UserResponse`/`UserUpdate`, solo tiene sentido si hay `assigned_profesor_id`.
-- `backend/services/admin_service.py`: `_authorize_own_student` (admin sin restricción; profesor
-  solo sobre alumnos con `assigned_profesor_id == su_id` y `student_type == "propio"`) usado en
-  `update_student`/`set_revoked`/`send_password_reset`. `PROFESOR_EDITABLE_FIELDS` es una
-  allowlist (`allowed_content`, `payment_type`, `payments_received`, `expires_at`) — cualquier
-  otro campo en el PATCH de un profesor es 403, incluido sobre sus propios alumnos propios.
-  `update_student` también bloquea que un admin cambie su propio `role` (400).
-- `backend/api/admin.py`: `PATCH /students/{id}`, `.../send-password-reset`, `.../revoke`,
-  `.../reactivate` ahora aceptan `require_role(["admin","profesor"])` (antes solo admin).
-- `frontend/src/pages/Admin.js`: selector de Rol en el editor de perfil (deshabilitado si es tu
-  propia cuenta), botón "👤 Perfil" ahora visible también en filas de admin, selector "Tipo de
-  alumno" en "✏️ Acceso" (solo si hay profesor asignado), y nueva tarjeta "Profesores" con la
-  tabla alumnos totales/propios/centro (calculada del roster ya cargado, sin endpoint nuevo).
-- `EditUserModal` y `ExpiryEditorModal` se sacaron de dentro de `Admin.js` a componentes propios
-  (`frontend/src/components/EditUserModal.js` y `ExpiryEditorModal.js`) para poder reusarlos tal
-  cual desde `ProfesorDashboard.js`; `EditUserModal` acepta `adminOnly` (`false` oculta reasignar
-  profesor y el tipo propio/centro). `RosterTable.js` gatea cada botón/columna por si le pasan el
-  handler correspondiente (antes los pintaba todos siempre), para poder reusarlo con un
-  subconjunto de acciones sin tocarlo cada vez que cambian los permisos de quien lo usa.
-- `frontend/src/pages/ProfesorDashboard.js`: nueva pestaña "🏠 Administrar Propios (N)" que reusa
-  `RosterTable` + `EditUserModal`(`adminOnly={false}`) + `ExpiryEditorModal`, filtrada a
-  `student_type === 'propio'`, con los mismos endpoints de `adminService` (ya abiertos a profesor
-  en el backend).
-
-## Ya aclarado con el usuario (no repetir la explicación)
-
-- El chat manda email al destinatario (agrupado en ventanas de 5 min), pero si esa persona
-  responde AL CORREO en vez de en la app, esa respuesta no llega a Mensajes — Brevo aquí solo
-  envía, no tiene recepción de correo entrante configurada (haría falta dominio propio +
-  parsing de correo entrante, mucho más grande, no se ha pedido implementarlo).
-- Los "Bienvenido/a a ADOC" que el usuario vio en el log de Brevo eran altas reales de alumnos
-  nuevos (no un fallo del chat) — escribir en el chat nunca dispara el correo de bienvenida,
-  son dos rutas de código totalmente separadas.
-
-## Verificación antes de cada commit
-
-Backend: `cd backend && source venv/bin/activate && python -m pytest -q` (14 tests en verde).
-Frontend: `CI=true npx eslint <archivos tocados>` y `CI=true npm run build` (Vercel trata los
-warnings de ESLint como error de build, aunque en local con `react-scripts start` no falle).
-
-Después de pushear, Render y Vercel auto-despliegan, pero el webhook de Vercel a veces no salta
-solo — comprobar en https://vercel.com/adriian-ocs-projects/pagina-final/deployments y si el
-commit nuevo no aparece, usar el menú "..." → Crear despliegue → rama `main` → Deploy to
-Production a mano. Verificar en el navegador real (Claude in Chrome) con una sesión ya
-autenticada cuando sea posible antes de dar algo por terminado.
-
-## Incidente de seguridad ya resuelto (histórico, por si aparece referencia)
-
-En una sesión anterior se subieron por error contraseñas reales en texto plano a este
-`CONTINUATION.md` en el repo público. Se rotaron las 11 contraseñas afectadas en producción y se
-reescribió el archivo. Desde entonces, regla dura: nunca credenciales reales en el repo (ver
-arriba). No hay nada pendiente de ese incidente, solo se documenta para que quede constancia.
+- **Nunca escribir credenciales reales de producción (Mongo, Brevo, B2...) en ningún archivo del repo**, aunque haya permiso para pushear sin preguntar.
+- El `.env` local apunta a Mongo local (`opositores_dev`), que SÍ tiene una copia realista del contenido (639 preguntas, mismos temas) — sirve para desarrollar y verificar, pero los cambios ahí NO se reflejan en producción solos. Para todo lo que toque datos de producción (seeds, correcciones de preguntas, etc.), dar al usuario el script/comando exacto para que lo corra él con su `.env` de producción — Claude no debe tener ni pedir esas credenciales.
+- Verificar siempre antes de dar por hecho un fallo de deploy: comprobar directamente la URL de producción (backend y frontend) con curl antes de asumir que algo no está publicado — Vercel/Render pueden mandar un aviso de error de un build que no afecta al sitio ya servido.
+- Si aparecen archivos modificados/sin trackear que no reconoces: es probable que haya otra sesión de Claude Code trabajando en paralelo sobre el mismo repo. No los borres ni los incluyas en tus commits — investiga primero, coméntalo brevemente, y sigue con lo tuyo.
