@@ -183,7 +183,7 @@ const Layout = ({ children }) => {
                   <img src="/branding/logo.png" alt="ADOC" className="h-12 w-auto object-contain" />
                 </Link>
               </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <div className="hidden lg:ml-6 lg:flex lg:space-x-8">
                 {navLinks.map((link) => (
                   <Link
                     key={link.to}
@@ -202,7 +202,7 @@ const Layout = ({ children }) => {
             </div>
 
             {/* Escritorio: nombre + cerrar sesión visibles siempre */}
-            <div className="hidden sm:flex sm:items-center">
+            <div className="hidden lg:flex lg:items-center">
               <div className="relative mr-4">
                 <button
                   onClick={() => setNotifOpen((open) => !open)}
@@ -289,8 +289,8 @@ const Layout = ({ children }) => {
               </button>
             </div>
 
-            {/* Móvil: botón hamburguesa en vez de intentar encajar todo en la misma fila */}
-            <div className="flex items-center gap-1 sm:hidden">
+            {/* Móvil/tablet: botón hamburguesa en vez de intentar encajar todo en la misma fila */}
+            <div className="flex items-center gap-1 lg:hidden">
               <div className="relative">
                 <button
                   onClick={() => setNotifOpen((open) => !open)}
@@ -376,9 +376,9 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
-        {/* Panel desplegable de móvil */}
+        {/* Panel desplegable de móvil/tablet */}
         {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-gray-200" data-testid="mobile-menu">
+          <div className="lg:hidden border-t border-gray-200" data-testid="mobile-menu">
             <div className="pt-2 pb-3 space-y-1">
               {navLinks.map((link) => (
                 <Link
