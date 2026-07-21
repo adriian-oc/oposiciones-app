@@ -6,6 +6,7 @@ import RosterTable from '../components/RosterTable';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EditUserModal from '../components/EditUserModal';
 import ExpiryEditorModal from '../components/ExpiryEditorModal';
+import DraftQuestionsBank from '../components/DraftQuestionsBank';
 import { profesorService } from '../services/profesorService';
 import { adminService } from '../services/adminService';
 import { themeService } from '../services/themeService';
@@ -203,8 +204,30 @@ const ProfesorDashboard = () => {
             >
               🏠 Administrar Propios {ownStudents.length > 0 && `(${ownStudents.length})`}
             </button>
+            <button
+              onClick={() => setActiveTab('draft-questions')}
+              className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'draft-questions'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              data-testid="tab-draft-questions"
+            >
+              🗂️ Preguntas sin lanzar
+            </button>
           </nav>
         </div>
+
+        {activeTab === 'draft-questions' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-sm text-gray-600 mb-4">
+              Preguntas generadas para las novedades de temario, todavía sin publicar. Revísalas,
+              edítalas si hace falta, selecciona las que quieras y publícalas como Cuadernillo
+              (se añaden al cuadernillo ya existente del tema) o como Supuesto nuevo.
+            </p>
+            <DraftQuestionsBank />
+          </div>
+        )}
 
         {activeTab === 'students' && (
           students.length === 0 ? (

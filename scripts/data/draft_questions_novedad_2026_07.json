@@ -1,0 +1,126 @@
+{
+  "SPECIFIC_12": [
+    {
+      "text": "¿Qué disposición de la Ley 1/2026, de 8 de abril, modifica la Ley 19/2021 del Ingreso Mínimo Vital?",
+      "choices": ["Disposición final primera", "Disposición final tercera", "Disposición adicional segunda", "Disposición transitoria quinta"],
+      "correct_answer": 1,
+      "explanation": "La disposición final tercera de la Ley 1/2026 modifica los arts. 10.4 y 16 LIMV, la DT7.ª y añade la DT11.ª."
+    },
+    {
+      "text": "¿Cuándo entró en vigor la reforma del IMV introducida por la Ley 1/2026, de 8 de abril?",
+      "choices": ["El 1 de enero de 2026", "El 9 de abril de 2026", "El 10 de abril de 2026", "El 31 de diciembre de 2026"],
+      "correct_answer": 2,
+      "explanation": "Se publicó en el BOE el 9 de abril de 2026 y entró en vigor al día siguiente, el 10/04/2026 (disposición final quinta)."
+    },
+    {
+      "text": "Tras la reforma del art. 10.4 LIMV, si una persona deja de residir en el domicilio de una unidad de convivencia, ¿qué ocurre con el requisito de 6 meses de residencia continuada para quienes permanecen?",
+      "choices": ["Deben acreditar de nuevo los 6 meses de convivencia", "Ya no necesitan acreditar los 6 meses de residencia continuada para esa revisión", "El plazo se amplía a 12 meses", "Se extingue automáticamente el derecho de todos los miembros"],
+      "correct_answer": 1,
+      "explanation": "La reforma exime a las personas que permanecen en el domicilio de acreditar de nuevo los 6 meses de convivencia en esa revisión concreta."
+    },
+    {
+      "text": "Según el nuevo art. 16.4 LIMV, ¿cuántas actualizaciones anuales de la cuantía del IMV se realizan ahora (antes de la reforma solo había una)?",
+      "choices": ["Una, con efectos desde el 1 de enero", "Dos: una provisional y una definitiva", "Tres, cada cuatro meses", "Ninguna, la cuantía es fija durante todo el año"],
+      "correct_answer": 1,
+      "explanation": "Ahora hay doble actualización anual: 1.ª provisional (datos de AEAT/haciendas forales del año anterior) y 2.ª definitiva (datos tributarios consolidados)."
+    },
+    {
+      "text": "La actualización DEFINITIVA del art. 16.4 LIMV, con datos tributarios consolidados, ¿desde cuándo produce efectos económicos?",
+      "choices": ["Desde el día 1 del mes siguiente a realizarse", "Desde el 1 de enero de cada año", "Desde el día de la solicitud", "Con carácter retroactivo a los 3 años anteriores"],
+      "correct_answer": 1,
+      "explanation": "La actualización definitiva produce efectos económicos desde el 1 de enero de cada año; la provisional sí es la que tiene efectos desde el mes siguiente a realizarse."
+    },
+    {
+      "text": "Tras la reforma del art. 16.5 LIMV, ¿qué ya NO se exige para incorporar a un nuevo miembro a una unidad de convivencia ya reconocida?",
+      "choices": ["La declaración responsable", "El consentimiento del nuevo integrante", "El plazo de 6 meses de convivencia", "La comunicación al INSS"],
+      "correct_answer": 2,
+      "explanation": "Se sigue exigiendo declaración responsable y consentimiento del nuevo integrante, pero ya no el plazo de 6 meses de convivencia previa."
+    },
+    {
+      "text": "¿Qué hace el INSS cuando se incorpora un nuevo miembro a la unidad de convivencia, según el art. 16.5 LIMV reformado?",
+      "choices": ["Extingue automáticamente la prestación", "Suspende la prestación hasta revisar requisitos y cuantía", "Duplica la cuantía de inmediato", "No hace nada hasta la siguiente actualización anual"],
+      "correct_answer": 1,
+      "explanation": "El INSS suspende la prestación mientras revisa los requisitos y recalcula la cuantía tras la incorporación del nuevo miembro."
+    },
+    {
+      "text": "La disposición transitoria séptima LIMV, tras la reforma, amplía la habilitación de las Entidades del Tercer Sector para certificar los arts. 21.9 y 21.10 ¿de qué plazo a qué plazo?",
+      "choices": ["De 5 años a indefinida", "De 1 año a 5 años", "De indefinida a 5 años", "No se modifica, sigue en 5 años"],
+      "correct_answer": 0,
+      "explanation": "Pasa de una habilitación de 5 años (desde el 30/09/2020) a una habilitación indefinida."
+    },
+    {
+      "text": "La nueva disposición transitoria undécima LIMV establece que los nuevos arts. 10.4 y 16 se aplican a:",
+      "choices": ["Solo a las solicitudes presentadas después del 10/04/2026", "A todos los procedimientos, sin excepción, desde 2021", "Los procedimientos sin resolución a fecha 10/04/2026", "Únicamente a los procedimientos judicializados"],
+      "correct_answer": 2,
+      "explanation": "El régimen transitorio (DT11.ª) aplica los nuevos artículos a los procedimientos que a 10/04/2026 aún no tuvieran resolución."
+    },
+    {
+      "text": "Según el art. 16.2 LIMV reformado, si la modificación de circunstancias personales AUMENTA la cuantía, ¿cuándo se aplican esos efectos?",
+      "choices": ["Siempre desde el día del hecho causante, sin más requisitos", "Solo si se comunica dentro del plazo del art. 36; si no, desde el mes siguiente a la comunicación", "Nunca se aplican con carácter retroactivo", "Solo si lo aprueba un juez"],
+      "correct_answer": 1,
+      "explanation": "Comunicar en plazo permite cobrar antes; fuera de plazo, los efectos son desde el día 1 del mes siguiente a la comunicación."
+    }
+  ],
+  "SPECIFIC_4": [
+    {
+      "text": "¿Qué disposición del TRLGSS da cobertura al convenio especial para recuperar cotización por prácticas anteriores a 2024?",
+      "choices": ["Disposición adicional quincuagésima segunda", "Disposición transitoria primera", "Artículo 36 TRLGSS", "Disposición final segunda"],
+      "correct_answer": 0,
+      "explanation": "La DA 52.ª TRLGSS (introducida por el RDL 2/2023) es la base normativa, desarrollada por Orden ISM."
+    },
+    {
+      "text": "¿Cuál es el número máximo de días/años que se pueden recuperar mediante este convenio especial?",
+      "choices": ["2 años", "5 años (1.825 días)", "10 años", "Sin límite"],
+      "correct_answer": 1,
+      "explanation": "El máximo recuperable son 5 años cotizados, equivalentes a 1.825 días."
+    },
+    {
+      "text": "¿Hasta qué fecha límite se puede solicitar la suscripción de este convenio especial?",
+      "choices": ["31 de diciembre de 2024", "31 de diciembre de 2026", "31 de diciembre de 2028", "No hay plazo, está siempre abierto"],
+      "correct_answer": 2,
+      "explanation": "El plazo de solicitud, ampliado por la Orden ISM/812/2024, llega hasta el 31/12/2028."
+    },
+    {
+      "text": "¿Ante qué organismo se suscribe el convenio especial para recuperar la cotización por prácticas?",
+      "choices": ["El Servicio Público de Empleo Estatal (SEPE)", "La Tesorería General de la Seguridad Social (TGSS)", "La Agencia Tributaria (AEAT)", "El Instituto Nacional de la Seguridad Social (INSS), exclusivamente"],
+      "correct_answer": 1,
+      "explanation": "El convenio especial se suscribe con la TGSS, acreditando las prácticas ante el centro donde se cursaron."
+    },
+    {
+      "text": "¿Qué beneficio fiscal tienen las cuotas abonadas por este convenio especial?",
+      "choices": ["Ninguno, no son deducibles", "Son deducibles en el IRPF", "Están exentas de IVA", "Dan derecho a una subvención directa"],
+      "correct_answer": 1,
+      "explanation": "Las cuotas abonadas por el convenio especial son deducibles en el IRPF."
+    },
+    {
+      "text": "Para prácticas NO remuneradas, ¿antes de qué fecha debieron realizarse para poder acogerse a este convenio especial?",
+      "choices": ["Antes del 1 de enero de 2024", "Antes del 1 de enero de 2020", "Antes del 1 de noviembre de 2011", "No hay límite temporal para las no remuneradas"],
+      "correct_answer": 0,
+      "explanation": "Las prácticas no remuneradas deben ser anteriores al 1/1/2024 (las remuneradas, anteriores al 1/11/2011)."
+    },
+    {
+      "text": "Desde octubre de 2023, la realización de prácticas formativas y prácticas académicas externas determina:",
+      "choices": ["La exclusión total del sistema de la Seguridad Social", "La inclusión en el sistema de la Seguridad Social de quienes las realizan", "Solo la cotización por desempleo", "Nada, es una obligación exclusiva del centro educativo"],
+      "correct_answer": 1,
+      "explanation": "Desde octubre de 2023 estas prácticas determinan la inclusión obligatoria en el sistema de la Seguridad Social."
+    },
+    {
+      "text": "En la cotización de las prácticas realizadas desde octubre de 2023 (inclusión obligatoria), ¿qué reducción se aplica a la cuota por contingencias comunes?",
+      "choices": ["50%", "95%", "No hay reducción", "100%, quedan exentas"],
+      "correct_answer": 1,
+      "explanation": "Se aplica una reducción general del 95% sobre la cuota por contingencias comunes, y queda excluida la cotización finalista del MEI."
+    },
+    {
+      "text": "¿Qué diferencia principal hay entre la inclusión obligatoria desde octubre de 2023 y el convenio especial de recuperación de cotización por prácticas anteriores a 2024?",
+      "choices": ["Son exactamente lo mismo", "La inclusión obligatoria es automática hacia adelante; el convenio especial es voluntario y retroactivo para periodos anteriores", "El convenio especial es obligatorio y automático", "La inclusión obligatoria solo aplica a becarios de investigación"],
+      "correct_answer": 1,
+      "explanation": "Son dos mecanismos distintos: uno obligatorio hacia adelante desde octubre de 2023, y otro voluntario y retroactivo para prácticas anteriores a 2024."
+    },
+    {
+      "text": "La base de cotización del convenio especial de recuperación toma como referencia:",
+      "choices": ["El año en que se realizó la actividad (con una reducción sobre la cuota)", "Siempre el año en curso, sin importar cuándo se hicieron las prácticas", "El salario mínimo interprofesional actual", "Una cuantía fija de 500€/mes"],
+      "correct_answer": 0,
+      "explanation": "La base toma como referencia el año en que se realizó la actividad, con una reducción del 0,77 sobre la cuota."
+    }
+  ]
+}
