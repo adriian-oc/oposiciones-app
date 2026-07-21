@@ -35,8 +35,50 @@ cuenta admin↔profesor sin re-login, chat admin↔profesor además de admin/pro
 de remitente de email, cada correo automático registrado también como mensaje dentro de la app,
 progresión fija del calendario por temario, rediseño de Chat con barra de contactos, foto de
 perfil, correos con plantilla visual común, actividad de email de Brevo en Admin, cambio de rol
-de usuarios existentes, y alumnos "propios" de un profesor con su propia pestaña de
-administración (ambas rondas del 2026-07-20) — ver detalle de la última ronda más abajo).
+de usuarios existentes, alumnos "propios" de un profesor con su propia pestaña de administración
+(ambas rondas del 2026-07-20), e insignia NEW + aviso de novedad de temario por email/in-app
+(2026-07-21) — ver detalle de la última ronda más abajo).
+
+## Flujo permanente: cómo avisar de una novedad de temario
+
+Instrucción del usuario (2026-07-21, para aplicar siempre a partir de ahora, no solo esta vez):
+cada vez que se actualice el temario (nueva ley, reforma, sentencia relevante...), seguir este
+mismo proceso, reutilizando la tarjeta de Admin en vez de improvisar uno nuevo cada ronda:
+
+1. **Verificar contra el BOE** antes de dar nada por bueno — una captura de Instagram/red social
+   puede llevar el número de BOE equivocado o mezclar dos normas; confirmar con `WebFetch`/
+   `WebSearch` sobre boe.es (o el buscador `https://www.boe.es/buscar/doc.php?id=<ref>`) el título
+   exacto, qué artículos toca y la fecha de entrada en vigor antes de tocar ningún PDF.
+2. **Identificar el tema afectado** en `scripts/data/themes_seed.json` (código `SPECIFIC_N` /
+   `GENERAL_N`) y su PDF en `frontend/public/temario/<area>_<tema_key>.pdf`.
+3. **Insertar una página de "novedad" nueva como página 1** del PDF (reportlab + pypdf, sin tocar
+   el resto del documento), respetando el estilo visual ya existente en esos PDF: título en
+   `#1F3864`, texto de novedad en rojo `#8B0000`, caja de cabecera en `#34437C`, fondo de caja
+   clara `#EBF2FF`, fuente Helvetica (equivalente a Liberation Sans, la fuente real incrustada).
+   Sobrescribir el PDF en `frontend/public/temario/` (nunca tocar `frontend/build/`, que está en
+   `.gitignore` y se regenera solo).
+4. **Marcar `is_new: true`** en el `content_unit` correspondiente
+   (`backend/models/content_unit.py` campo `is_new`,
+   `ContentUnitRepository.set_is_new(area_id, theme_id, True)`) — es lo que pinta la insignia
+   **NEW** junto al tema en `frontend/src/pages/Cuadernos.js`.
+5. **Avisar a alumnos y profesores** desde la tarjeta **"📣 Novedad de temario"** del panel de
+   Admin (`frontend/src/pages/Admin.js`, tab `content-update`) → botón "Enviar aviso de novedad".
+   Dispara `POST /api/admin/content-updates/temario-novedad-2026` →
+   `AdminService.send_content_update_announcement()`, que marca el/los `content_unit` como NEW,
+   notifica in-app (`NotificationService.notify_bulk(["student","profesor"], ...)`, tipo
+   `content_update`, icono 🆕 en `Layout.js`) y manda un email real vía Brevo
+   (`EmailService.send_content_update_email`) a todos los alumnos y profesores activos (no
+   revocados), invitándoles a entrar a ADOC. Como es un envío real e irreversible a cuentas
+   reales, quien pulsa el botón tiene que ser el propio Adrián con su sesión de admin — Claude no
+   debe iniciar sesión en producción ni manejar su contraseña bajo ningún concepto; si hace falta
+   marcar el NEW o mandar el aviso desde una sesión de Claude, hacerlo contra la base de datos
+   *local* de desarrollo para verificar, y pedirle a él que dé al botón en producción.
+
+**Importante para la próxima vez**: ahora mismo `send_content_update_announcement()` y el asunto/
+cuerpo del email están **hardcodeados** a la novedad del Tema 4 (convenio especial de cotización
+por prácticas) y el Tema 12 (reforma IMV Ley 1/2026) de julio 2026 — antes de la siguiente
+novedad, generalizar el endpoint para que acepte una lista de `(theme_code, mensaje)` y el texto
+del email en vez de estar fijado a estos dos temas concretos.
 
 ## Cerrado — importar progreso de alumnos de "la página antigua"
 
