@@ -6,6 +6,7 @@ import QuestionUpload from '../components/QuestionUpload';
 import QuestionsManager from '../components/QuestionsManager';
 import RosterTable from '../components/RosterTable';
 import TopFailuresPanel from '../components/TopFailuresPanel';
+import ContestAdminPanel from '../components/ContestAdminPanel';
 import ContentAccessChecklist from '../components/ContentAccessChecklist';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EditUserModal from '../components/EditUserModal';
@@ -374,6 +375,13 @@ const Admin = () => {
                 description: 'Avisa a alumnos y profesores de la actualización del Tema 4 y el Tema 12',
                 testId: 'card-content-update',
               },
+              {
+                key: 'concurso',
+                icon: '🏆',
+                label: 'Concurso',
+                description: 'Inscritos, clasificación y plazas restantes del Concurso de Acceso',
+                testId: 'card-concurso',
+              },
             ].map((section) => (
               <button
                 key={section.key}
@@ -608,6 +616,8 @@ const Admin = () => {
         )}
 
         {activeTab === 'failures' && <TopFailuresPanel />}
+
+        {activeTab === 'concurso' && <ContestAdminPanel />}
 
         {activeTab === 'documents' && (
           <div className="bg-white rounded-lg shadow p-6" data-testid="documents-section">

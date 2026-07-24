@@ -6,6 +6,7 @@ import ConfirmDialog from './ConfirmDialog';
 import Avatar from './Avatar';
 import { messageService } from '../services/messageService';
 import { notificationService } from '../services/notificationService';
+import { contestService } from '../services/contestService';
 import { NOTIF_ICONS } from '../config/notificationIcons';
 
 const UNREAD_POLL_MS = 30000;
@@ -25,6 +26,13 @@ const Layout = ({ children }) => {
   // click, sin esperar al próximo sondeo ni a que el servidor confirme la lectura (ver
   // MessageService.get_thread, que marca como leído en cuanto se abre el hilo de verdad).
   const [dismissedIds, setDismissedIds] = useState(() => new Set());
+  const [isContestParticipant, setIsContestParticipant] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'student') {
+      contestService.getMyEntry().then((entry) => setIsContestParticipant(!!entry)).catch(() => {});
+    }
+  }, [user]);
 
   // Sondeo simple de hilos con conversación y notificaciones (acceso nuevo, documentos/
   // solicitudes pendientes, novedades de contenido...) -- se re-consulta al cambiar de página y
@@ -169,6 +177,7 @@ const Layout = ({ children }) => {
       show: user?.role === 'student' || user?.role === 'profesor' || user?.role === 'admin',
     },
     { to: '/mi-perfil', label: '👤 Mi perfil', show: user?.role === 'profesor' || user?.role === 'student' },
+    { to: '/concurso/ranking', label: '🏆 Ranking', show: isContestParticipant || user?.role === 'admin' },
   ].filter((link) => link.show);
 
   return (

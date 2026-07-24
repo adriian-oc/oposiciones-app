@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { contestService } from '../services/contestService';
+import ContestCountdown from '../components/ContestCountdown';
 
 const FEATURES = [
   {
@@ -41,6 +43,12 @@ const STEPS = [
 ];
 
 const Landing = () => {
+  const [contestConfig, setContestConfig] = useState(null);
+
+  useEffect(() => {
+    contestService.getConfig().then(setContestConfig).catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {/* Barra superior: marca + acceso, sin más navegación que distraiga */}
@@ -58,6 +66,31 @@ const Landing = () => {
           </Link>
         </div>
       </header>
+
+      {/* Concurso de Acceso -- campaña con fecha límite, destacada al principio de todo */}
+      {contestConfig && (
+        <section className="bg-gray-900 text-white">
+          <div className="max-w-4xl mx-auto px-6 py-10 text-center">
+            <p className="text-sm font-semibold text-amber-400 uppercase tracking-wide mb-2">
+              Concurso de acceso ADOC Oposiciones
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold">¿Crees que puedes estar entre los mejores?</h2>
+            <p className="mt-2 text-gray-300">
+              Solo 300 personas podrán participar. Tu nota determinará tu premio: desde acceso
+              gratis 1 año hasta 30 €/mes.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <ContestCountdown endAt={contestConfig.end_at} />
+            </div>
+            <Link
+              to="/concurso"
+              className="mt-6 inline-block px-6 py-3 bg-amber-400 text-amber-950 rounded-md font-semibold hover:bg-amber-300"
+            >
+              Inscríbete aquí
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Hero -- responde en los primeros 5 segundos qué es, para quién y por qué importa */}
       <section className="bg-gradient-to-br from-primary-50 to-white">

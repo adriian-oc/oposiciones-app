@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from config.database import connect_to_mongo, close_mongo_connection
 from services.theme_service import ThemeService
 from utils.rate_limit import limiter
-from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests, study_calendar, notes, documents, notifications, draft_questions
+from api import auth, admin, themes, questions, exams, practical_sets, analytics, content_units, messages, profesor, progress, access_requests, study_calendar, notes, documents, notifications, draft_questions, contest
 from pathlib import Path
 import logging
 
@@ -87,6 +87,7 @@ app.include_router(notes.router)
 app.include_router(documents.router)
 app.include_router(notifications.router)
 app.include_router(draft_questions.router)
+app.include_router(contest.router)
 
 # Sirve los PDFs subidos por profesores -- almacenamiento en disco local, solo válido en
 # desarrollo (ver nota en services/document_submission_service.py).

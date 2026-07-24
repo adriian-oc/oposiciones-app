@@ -24,6 +24,8 @@ import ResetPassword from './pages/ResetPassword';
 import StudyCalendar from './pages/StudyCalendar';
 import MiPerfil from './pages/MiPerfil';
 import FocusMode from './pages/FocusMode';
+import Concurso from './pages/Concurso';
+import ContestRanking from './pages/ContestRanking';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -33,6 +35,7 @@ const AppRoutes = () => {
       {/* Public routes */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
       <Route path="/solicitar-acceso" element={<AccessRequest />} />
+      <Route path="/concurso" element={<Concurso />} />
       <Route path="/trabaja-con-nosotros" element={<TeacherApplication />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -183,6 +186,15 @@ const AppRoutes = () => {
         element={
           <PrivateRoute>
             <MiPerfil />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/concurso/ranking"
+        element={
+          <PrivateRoute>
+            <ContestRanking />
           </PrivateRoute>
         }
       />
