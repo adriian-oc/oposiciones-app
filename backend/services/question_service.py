@@ -76,8 +76,9 @@ class QuestionService:
 
         # Guarda el estado previo antes de aplicar el cambio, para poder auditar/revertir
         # ediciones de una pregunta.
+        edited_at = None
         if any(field in question_data for field in ("text", "choices", "correct_answer")):
-            await self.question_repo.append_edit_history(question_id, {
+            edited_at = await self.question_repo.append_edit_history(question_id, {
                 "text": existing["text"],
                 "choices": existing["choices"],
                 "correct_answer": existing["correct_answer"],
@@ -90,6 +91,26 @@ class QuestionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update question"
             )
+
+        # Si cambió la respuesta correcta, recalcular en caliente las notas/estadísticas de
+        # alumnos que ya habían respondido esta pregunta con el valor anterior (ver
+        # AnswerCorrectionService -- la nota de un examen se congela al terminarlo, no se
+        # recalcula sola). No debe romper la propia edición si falla.
+        new_correct_answer = question_data.get("correct_answer")
+        if edited_at is not None and new_correct_answer is not None and new_correct_answer != existing["correct_answer"]:
+            try:
+                from services.answer_correction_service import AnswerCorrectionService
+                history = existing.get("edit_history") or []
+                start_time = history[-1]["edited_at"] if history else existing["created_at"]
+                await AnswerCorrectionService().recalculate_for_correction(
+                    question_id=question_id,
+                    old_value=existing["correct_answer"],
+                    new_value=new_correct_answer,
+                    start_time=start_time,
+                    end_time=edited_at,
+                )
+            except Exception as e:
+                logger.error(f"Failed to recalculate stats after correcting question {question_id}: {e}")
 
         return await self.question_repo.get_by_id(question_id)
 

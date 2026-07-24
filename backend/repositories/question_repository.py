@@ -48,12 +48,14 @@ class QuestionRepository:
         )
         return result.modified_count > 0
 
-    async def append_edit_history(self, question_id: str, entry: dict) -> None:
+    async def append_edit_history(self, question_id: str, entry: dict):
         from models.question import QuestionEditHistoryEntry
+        history_entry = QuestionEditHistoryEntry(**entry)
         await self.collection.update_one(
             {"id": question_id},
-            {"$push": {"edit_history": QuestionEditHistoryEntry(**entry).model_dump()}},
+            {"$push": {"edit_history": history_entry.model_dump()}},
         )
+        return history_entry.edited_at
 
     async def delete(self, question_id: str) -> bool:
         result = await self.collection.delete_one({"id": question_id})
