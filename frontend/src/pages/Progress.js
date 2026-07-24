@@ -438,7 +438,7 @@ const Progress = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puntuación</th>
-                    {!isOther && <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>}
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -467,24 +467,30 @@ const Progress = () => {
                           <span className="text-sm text-gray-400">-</span>
                         )}
                       </td>
-                      {!isOther && (
-                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                          {attempt.is_completed ? (
-                            <Link to={`/exams/results/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver Resultados</Link>
-                          ) : (
-                            <>
-                              <Link to={`/exams/take/${attempt.attempt_id}`} className="text-green-600 hover:text-green-900">Continuar</Link>
-                              <Link to={`/exams/progress/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver respuestas</Link>
-                              <button
-                                onClick={() => setDeletingAttempt(attempt.attempt_id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Borrar
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      )}
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                        {attempt.is_completed ? (
+                          <Link
+                            to={`/exams/results/${attempt.attempt_id}`}
+                            state={isOther ? { studentLabel: viewedUser?.email || targetUserId } : undefined}
+                            className="text-primary-600 hover:text-primary-900"
+                          >
+                            Ver Resultados
+                          </Link>
+                        ) : isOther ? (
+                          <span className="text-gray-400">En progreso</span>
+                        ) : (
+                          <>
+                            <Link to={`/exams/take/${attempt.attempt_id}`} className="text-green-600 hover:text-green-900">Continuar</Link>
+                            <Link to={`/exams/progress/${attempt.attempt_id}`} className="text-primary-600 hover:text-primary-900">Ver respuestas</Link>
+                            <button
+                              onClick={() => setDeletingAttempt(attempt.attempt_id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Borrar
+                            </button>
+                          </>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

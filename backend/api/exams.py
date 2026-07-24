@@ -142,5 +142,5 @@ async def get_attempt_results(
 ):
     """Get attempt results"""
     exam_service = get_exam_service()
-    result = await exam_service.get_attempt_results(attempt_id, current_user["id"])
+    result = await exam_service.get_attempt_results(attempt_id, current_user)
     return result

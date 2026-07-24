@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Layout from "../components/Layout";
+import ViewingBanner from "../components/ViewingBanner";
 import { examService } from "../services/examService";
 import AskTeacherButton from "../components/AskTeacherButton";
+import { useAuth } from "../context/AuthContext";
 
 const ExamResults = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
@@ -63,10 +67,17 @@ const ExamResults = () => {
   const scale = details.scale || 70;
   const scorePercentage = (details.final_score / scale) * 100;
   const isPassed = scorePercentage >= 50; // Assuming 50% is pass threshold
+  const isOwn = !user?.id || attempt.user_id === user.id;
 
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
+        {!isOwn && (
+          <ViewingBanner
+            label={location.state?.studentLabel || attempt.user_id}
+            onExit={() => navigate(-1)}
+          />
+        )}
         {/* Header */}
         <div
           className="bg-white rounded-lg shadow-md p-8 mb-6 text-center"
@@ -287,7 +298,7 @@ const ExamResults = () => {
                       </div>
                     )}
 
-                  {result.status === "incorrect" && (
+                  {result.status === "incorrect" && isOwn && (
                     <div className="mt-3">
                       <AskTeacherButton questionText={result.question_text} />
                     </div>
@@ -300,7 +311,7 @@ const ExamResults = () => {
 
         {/* Actions */}
         <div className="flex justify-center space-x-4">
-          {details.incorrect > 0 && (
+          {details.incorrect > 0 && isOwn && (
             <button
               onClick={handleRetryFailures}
               disabled={retrying}

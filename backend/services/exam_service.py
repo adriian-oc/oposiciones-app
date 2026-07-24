@@ -547,8 +547,10 @@ class ExamService:
             "results": results
         }
 
-    async def get_attempt_results(self, attempt_id: str, user_id: str) -> dict:
-        """Get attempt results"""
+    async def get_attempt_results(self, attempt_id: str, current_user: dict) -> dict:
+        """Get attempt results. El propio alumno siempre puede ver los suyos; admin/profesor
+        (con el alumno asignado) puede ver los de un alumno concreto -- mismo criterio que
+        Mi Progreso/el Historial ajeno (ver utils.staff_access.check_can_view_student)."""
         attempt = await self.exam_repo.get_attempt_by_id(attempt_id)
         if not attempt:
             raise HTTPException(
@@ -556,11 +558,9 @@ class ExamService:
                 detail=ATTEMPT_NOT_FOUND_MESSAGE
             )
 
-        if attempt["user_id"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=NOT_AUTHORIZED_MESSAGE
-            )
+        if attempt["user_id"] != current_user["id"]:
+            from utils.staff_access import check_can_view_student
+            await check_can_view_student(attempt["user_id"], current_user)
 
         exam = await self.exam_repo.get_exam_by_id(attempt["exam_id"])
         if not exam:
