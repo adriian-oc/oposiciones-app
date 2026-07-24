@@ -8,7 +8,7 @@ Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo
 
 ## Pendiente — por prioridad
 
-1. **[HECHO en producción, salvo recalcular estadísticas] Corregir respuestas erróneas del Test de Teoría parte general (Temas 1-11) + examen nuevo "Repaso Temas 1-11".** Los alumnos reportaban notas mal calculadas; el profesor revisó el Tema 9 a mano y encontró ~12 errores (la revisión real encontró 56). Los PDF oficiales están en `/Users/adrian/Desktop/OPO/OPO 2/Test/GM/2. Parte general Test Vanesa año 1 tema 1 al 11/`.
+1. **[HECHO del todo, incluida la recalculación de estadísticas] Corregir respuestas erróneas del Test de Teoría parte general (Temas 1-11) + examen nuevo "Repaso Temas 1-11".** Los alumnos reportaban notas mal calculadas; el profesor revisó el Tema 9 a mano y encontró ~12 errores (la revisión real encontró 56). Los PDF oficiales están en `/Users/adrian/Desktop/OPO/OPO 2/Test/GM/2. Parte general Test Vanesa año 1 tema 1 al 11/`.
 
    **Confirmado un bug sistemático de desplazamiento de índice (+1) en la carga de estos datos**: cuando la respuesta correcta real era la opción a), b) o c), quedó marcada la opción siguiente; cuando era la d) (última), quedó bien por no haber "siguiente" opción. Verificado exhaustivamente, pregunta por pregunta, en los **11 temas** contra su PDF individual. Total 495 correcciones (337 de Temas 1,2,3,4,6,7,9,10,11 + 158 de Temas 5 y 8) mediante `scripts/fix_general_theme_answers.py` (commits `a769fd5` y `8f2b318`), que compara el valor actual antes de tocarlo y guarda cada cambio en `edit_history` para auditoría. **Aplicado en producción el 2026-07-24: 478 aplicadas, 17 saltadas como conflicto porque el profesor ya las había corregido a mano por su cuenta en producción el 21 de julio (verificado en su `edit_history`) — el script no las tocó, tal como está diseñado.**
 
@@ -16,14 +16,9 @@ Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo
 
    Excepcionalmente, esta vez el propio usuario pasó las credenciales de producción en el chat y Claude ejecutó los scripts directamente (el usuario no se manejaba con terminal/entornos) — no es la norma: por defecto seguir dando los scripts para que el usuario los corra él, y solo repetir esto si el usuario lo vuelve a pedir explícitamente.
 
-   Pendiente:
-   - **Recalcular estadísticas de alumnos** (ver punto 4): los `attempts`/`progress` de alumnos que respondieron estas preguntas antes de la corrección siguen contabilizados con la respuesta antigua (posiblemente errónea) hasta que se implemente esa recalculación — no está hecha todavía.
+   **[HECHO 2026-07-24] Recalcular estadísticas** (ver punto 4, ya cerrado del todo) — aplicado en producción: 6 exámenes con snapshot corregido, 1 intento de alumno con nota recalculada.
 
-2. **Sembrar las 20 preguntas de draft_questions en producción.** El código ya está desplegado (confirmado por curl: `/api/draft-questions` responde en Render, y el bundle de Vercel ya incluye el componente `DraftQuestionsBank`). Falta solo que el usuario ejecute, con su `.env` de producción:
-   ```
-   cd backend && source venv/bin/activate && python ../scripts/seed_draft_questions_novedad.py
-   ```
-   Después: Admin (o panel del profesor) → Novedad de temario → Preguntas sin lanzar → publicar como Cuadernillo o Supuesto.
+2. **[HECHO 2026-07-24] Sembrar las 20 preguntas de draft_questions en producción.** Ejecutado `scripts/seed_draft_questions_novedad.py` contra producción — 20 preguntas insertadas (`draft_questions` en Mongo Atlas). Queda como trabajo manual del profesor/admin: Admin → Novedad de temario → Preguntas sin lanzar → publicar como Cuadernillo o Supuesto.
 
 3. **Historial: reanudar/borrar test a medias (alumno) + ver/borrar test de alumno (profesor).** El alumno debe poder retomar un test en curso o borrarlo (esto ya existía). El profesor debe poder ver las respuestas concretas de un alumno en un test, o borrarlo.
 
@@ -33,8 +28,11 @@ Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo
    - `frontend/src/pages/ExamResults.js`: detecta si el intento es propio (`attempt.user_id === user.id`); si no, muestra el mismo `ViewingBanner` que el resto de vistas de solo lectura, y **oculta** "Repasar fallos" y "Pedir ayuda al profesor" (esos botones actúan sobre la cuenta de quien hace clic, no tendría sentido disparados por un profesor mirando el examen de otro).
    - Probado en local con datos reales de `alumno.test@example.com` (dry-run manual en navegador, no hay test automatizado): admin ve el detalle con el email correcto en el aviso, botones de alumno ocultos; el propio alumno sigue viendo los suyos con normalidad.
    - Pendiente dentro de este punto: que el profesor/admin también pueda **borrar** un test de un alumno (no solo verlo), y que el alumno pueda **reanudar** un test a medias desde el Historial si no lo hace ya (revisar si "Continuar" ya cubre esto).
+   - **Posible bug sin cerrar (reportado 2026-07-24, no confirmado como bug real todavía):** el usuario probó esto en producción (como admin y como profesor, con recarga forzada, cierre de sesión y ventana normal) y seguía sin ver "Ver Resultados" en el Historial ajeno. Verificado por servidor que el bundle desplegado SÍ contiene el fix (contenido exacto comprobado, no solo fecha) tanto en `adoc-oposiciones.vercel.app` como en `pagina-final-nine.vercel.app`. Diagnóstico de trabajo: `AuthContext.logout()` no hace un reload completo de página (`services/auth_service` / `context/AuthContext.js:33`, solo `setUser(null)`), así que una pestaña de SPA abierta desde antes del deploy puede seguir corriendo el JS viejo en memoria indefinidamente aunque se recargue el "estado" de la app — se le pidió probar en **ventana de incógnito** para confirmar. Revisar la respuesta antes de dar el punto 3 por cerrado del todo; si en incógnito tampoco funciona, es un bug real y hay que investigar más.
 
-4. **Recalcular estadísticas de alumnos al corregir una pregunta.** Cuando se edita `correct_answer` de una pregunta (vía Admin, o por las correcciones del punto 1), repasar los `attempts`/`progress` de alumnos que ya respondieron esa pregunta: si su respuesta coincide con la NUEVA respuesta correcta pero estaba contabilizada como fallo, corregir su estadística.
+4. **[HECHO 2026-07-24] Recalcular estadísticas de alumnos al corregir una pregunta.** Dos partes:
+   - **Automático a partir de ahora:** `backend/services/answer_correction_service.py` (`AnswerCorrectionService`) se dispara solo desde `QuestionService.update_question` cada vez que un admin/curador cambia `correct_answer` de una pregunta ya subida — parchea el snapshot de los exámenes afectados, recalcula la nota de los intentos ya terminados, y reconstruye `user_theme_stats`/`analytics_failures`/`progress` de los alumnos afectados. No rompe la edición si falla (logueado, no propagado). Probado de punta a punta con datos sintéticos.
+   - **Corrección retroactiva de lo ya aplicado antes de tener el hook automático:** `scripts/recalculate_stats_after_answer_fix.py` (idempotente, con `--dry-run`) — **ya ejecutado en producción**: recorrió las 495 correcciones de índice de Temas 1-11, encontró 6 exámenes con snapshot afectado y 1 intento de un alumno con nota mal calculada, y lo corrigió (estadísticas del alumno reconstruidas). Relanzado justo después en `--dry-run`: 0 pendiente, confirma que quedó aplicado limpio. Seguro re-ejecutar si hace falta.
 
 5. **Eliminar todos los emojis y usar imágenes de un banco gratuito.** Sustituir los emoji usados como iconos en toda la app (Admin.js, Layout.js, ProfesorDashboard.js, `config/notificationIcons.js`, etc.) por imágenes/iconos SVG de una web de recursos gratuitos para uso web, manteniendo el significado de cada uno.
 
@@ -105,9 +103,10 @@ Lee este archivo entero y continúa con el trabajo pendiente por prioridad. Repo
 - Foto de perfil (autoservicio + admin), logo ADOC como foto por defecto de admin.
 - Notificaciones: campanita rediseñada (no leídas arriba, punto rojo, tope 4 + panel completo `/comunicaciones`).
 - Icono de la app al añadir a pantalla de inicio (manifest.json, apple-touch-icon).
-- Banco de "Preguntas sin lanzar" (`draft_questions`) para publicar tras una novedad de temario, como Cuadernillo o Supuesto nuevo — código desplegado, falta sembrar en producción (punto 2).
+- Banco de "Preguntas sin lanzar" (`draft_questions`) para publicar tras una novedad de temario, como Cuadernillo o Supuesto nuevo — sembrado en producción (punto 2).
 - Corregido bug "Acceso Denegado" al volver de vista de análisis de alumno (profesor).
 - Arreglada la barra de navegación que se aplastaba en anchos intermedios de ventana (breakpoint subido de 640px a 1024px).
+- **Concurso de Acceso ADOC Oposiciones** (2026-07-24): campaña con fecha límite (20 días desde el primer uso, autoinicializada) e inscripción pública automática (sin revisión manual de admin, a diferencia de `/solicitar-acceso`) que da acceso restringido a Tema 3 (parte específica, teoría + cuadernillo) + 3 Supuestos elegidos al azar una única vez (mismos para todos los participantes, para que el ranking sea comparable) — reutiliza `allowed_content` sin tocar el control de acceso existente. Bloque destacado en la landing (`/`) con cuenta atrás en vivo y link a `/concurso` (reglas + formulario de inscripción); pestaña "Ranking" (`/concurso/ranking`) para participantes con nota anónima; tarjeta "Concurso" en Admin con clasificación completa (con email) y plazas restantes. Backend: `backend/{models,repositories,services,api}/contest*.py`. Copy de la campaña reescrito sin emoticonos a partir del borrador del usuario.
 
 ## Notas de proceso importantes
 
